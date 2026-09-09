@@ -1,5 +1,14 @@
 # DuoCards Auto Import changelog
 
+## 1.1.0 — 2026-09-09
+
+- Show the installed version and separate picture, example, saving and finished statuses.
+- Add Collapse, Clear and Copy log controls, plus a batch summary of added cards and progress resets.
+- Confirm saves only on expected import transitions; pause on manual intervention without reporting an unconfirmed success.
+- Require a fresh reset confirmation, including short-lived notifications and the final duplicate in a batch.
+- Coalesce page reads and poll less often while idle or paused.
+- Add real Chromium regression tests for loading, confirmations, errors and log controls.
+
 ## 1.0.5 — 2026-09-09
 
 - Declare the MIT license in script metadata.

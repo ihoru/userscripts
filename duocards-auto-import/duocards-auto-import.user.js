@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DuoCards Auto Import
 // @namespace    ihoru/userscripts
-// @version      1.0.5
+// @version      1.1.0
 // @license      MIT
 // @author       Igor Polyakov (https://github.com/ihoru)
 // @description  Save loaded import cards automatically and reset duplicate progress.
@@ -16,73 +16,99 @@
 
 (function () {
   'use strict';
+  const VERSION = '1.1.0';
 
-  // Kept independent of the DOM so transitions can be tested without an account.
   function createController(onLog = () => {}) {
-    let row = null;
-    let flight = null;
-    let paused = false;
-    let reason = '';
-    let resetConfirmed = false;
-    function recordCompleted() {
-      if (!flight || flight.logged) return;
-      flight.logged = true;
-      onLog(flight.kind === 'reset'
-        ? `${flight.position} Progress reset: ${flight.front}`
-        : `${flight.position} Added: ${flight.front} - ${flight.back}`);
-    }
-    function startAction(type, s, now) {
-      return { type, kind: type, at: now, position: s.position, front: s.front, back: s.back, logged: false };
-    }
+    let row = null, flight = null, paused = false, reason = '', batch = false, ended = false;
+    let counts = { added: 0, reset: 0 };
+    const position = value => (value || '').split('/').map(Number);
     function pause(message) {
       paused = true;
       reason = message;
       return { status: message, paused: true };
     }
+    function recordCompleted() {
+      if (!flight || flight.logged) return;
+      flight.logged = true;
+      if (flight.kind === 'reset') {
+        counts.reset++;
+        onLog(`${flight.position} Progress reset: ${flight.front}`);
+      } else {
+        counts.added++;
+        onLog(`${flight.position} Added: ${flight.front} - ${flight.back}`);
+      }
+    }
+    function startAction(type, s, now) {
+      return { type, kind: row.resetDone ? 'reset' : type, logged: !!row.resetDone,
+        at: now, position: s.position, front: s.front, back: s.back,
+        context: s.context, resetSignal: s.resetSignal || 0 };
+    }
     return {
+      summary: () => `${counts.added} added · ${counts.reset} progress resets`,
       toggle(now) {
         paused = !paused;
         reason = paused ? 'Paused by you' : '';
         if (flight) flight.at = now;
       },
+      manual() {
+        const pending = flight && !flight.logged;
+        flight = null;
+        return pause(pending ? 'Paused — manual interaction; pending result unconfirmed' : 'Paused — manual interaction');
+      },
       tick(s, now) {
-        if (!s.active) {
-          if (s.completed && !s.blocker) recordCompleted();
-          row = flight = null;
-          resetConfirmed = false;
-          return { status: 'Idle — no import', paused };
+        // Notifications are captured by the DOM adapter, including brief toasts.
+        if (flight?.type === 'reset' && !s.blocker && s.context === flight.context &&
+            (s.resetSignal || 0) > flight.resetSignal) recordCompleted();
+        if (flight) {
+          const [index, total] = position(flight.position);
+          const [next, nextTotal] = position(s.position);
+          const sameContext = s.context === flight.context;
+          const advanced = s.active && next === index + 1 && nextTotal === total;
+          const finished = !s.active && s.completed && index === total;
+          if (sameContext && (advanced || finished) && !s.blocker) {
+            if (flight.kind === 'reset' && !flight.logged) {
+              flight = null;
+              return pause('Progress reset was not confirmed — check the card');
+            }
+            recordCompleted();
+            flight = null;
+          } else if ((s.active && s.position !== flight.position) ||
+                     !sameContext || (!s.active && !s.blocker)) {
+            flight = null;
+            return pause('Import changed unexpectedly — pending result unconfirmed');
+          }
         }
-        // Empty fields are a transition, not a new import row.
-        if (!row || row.position !== s.position ||
+        if (!s.active) {
+          if (s.completed && batch && !s.blocker) ended = true;
+          row = null;
+          batch = false;
+          return { status: paused ? reason : ended ? 'Import finished' : 'Idle — no import', paused };
+        }
+        if (!batch) { batch = true; ended = false; counts = { added: 0, reset: 0 }; }
+        if (!row || row.position !== s.position || row.context !== s.context ||
             (s.front && row.front && s.front !== row.front)) {
-          if (row && s.position !== row.position && !s.blocker) recordCompleted();
-          row = { position: s.position, front: s.front, since: now, stable: now, signature: '' };
-          flight = null;
-          resetConfirmed = false;
+          row = { position: s.position, front: s.front, context: s.context,
+            since: now, stable: now, signature: '', resetDone: false };
         }
         if (s.front && !row.front) { row.front = s.front; row.since = now; }
-        if (flight?.type === 'reset' && s.resetSuccess) {
-          resetConfirmed = true;
-          recordCompleted();
-        }
-        if (flight?.type === 'save' && s.addedSuccess) recordCompleted();
-        if (paused) return { status: reason || 'Paused', paused: true };
+        if (paused) return { status: reason, paused: true };
         if (s.blocker) return pause(s.blocker);
         if (flight) {
-          if (flight.type === 'reset') {
-            if (resetConfirmed && !s.front && !s.back && !s.duplicate && s.skipEnabled) {
+          if (flight.type === 'reset' && flight.logged) {
+            if (!s.front && !s.back && !s.duplicate && s.skipEnabled) {
               flight = { ...flight, type: 'skip', at: now };
               return { action: 'skip', status: 'Advancing confirmed reset' };
             }
-            if (!s.duplicate && s.front && s.saveEnabled) {
-              // Some app versions keep the original form after resetting.
-              flight = null;
+            if (!s.duplicate && s.front === flight.front && s.saveEnabled) {
+              row.resetDone = true;
               row.stable = now;
+              flight = null;
             }
           }
           if (flight) {
-            if (now - flight.at >= 20000) return pause('No transition after ' + flight.type + ' — check the card');
-            return { status: 'Waiting after ' + flight.type };
+            if (now - flight.at >= 20000) return pause(`No confirmation after ${flight.type} — check the card`);
+            return { status: flight.type === 'save' ? 'Saving — waiting for confirmation' :
+              flight.type === 'reset' ? 'Resetting progress — waiting for confirmation' : 'Advancing confirmed reset' };
           }
         }
         if (!s.front || !s.back) {
@@ -94,7 +120,10 @@
         const ready = s.imageReady && !!s.hint && !s.busy;
         const timedOut = now - row.since >= 60000;
         if ((!ready && !timedOut) || now - row.stable < 1000) {
-          return { status: ready ? 'Content settling…' : 'Waiting for picture / example…' };
+          const waiting = !s.imageReady && !s.hint ? 'Waiting for picture and example' :
+            !s.imageReady ? 'Waiting for picture' : !s.hint ? 'Waiting for example' :
+            s.busy ? 'Waiting for card loading' : 'Content settling…';
+          return { status: waiting };
         }
         if (s.duplicate) {
           if (!s.resetEnabled) return pause('Duplicate reset control is unavailable');
@@ -112,8 +141,23 @@
     };
   }
 
+  // One queued read at a time. Bursts do not postpone an already queued read.
+  function createScheduler(run, clock) {
+    let timer = null, due = Infinity, last = -Infinity;
+    return function schedule(delay = 80) {
+      const target = Math.max(clock.now() + delay, last + 80);
+      if (timer !== null && due <= target) return;
+      if (timer !== null) clock.clear(timer);
+      due = target;
+      timer = clock.set(() => {
+        timer = null; due = Infinity; last = clock.now();
+        run();
+      }, Math.max(0, target - clock.now()));
+    };
+  }
+
   if (typeof module === 'object' && module.exports && typeof document === 'undefined') {
-    module.exports = { createController };
+    module.exports = { createController, createScheduler, VERSION };
     return;
   }
 
@@ -122,105 +166,161 @@
   const messages = [];
   const controller = createController(message => {
     messages.push(message);
-    history.textContent = messages.join('\n');
+    const entry = document.createElement('div');
+    entry.textContent = message;
+    history.append(entry);
     history.scrollTop = history.scrollHeight;
   });
   const panel = document.createElement('div');
   panel.id = panelId;
-  panel.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483646;background:#fff;color:#16324a;border:1px solid #80b5cf;border-radius:9px;padding:10px 12px;box-shadow:0 2px 12px #0002;font:13px/1.4 system-ui;max-width:310px';
+  panel.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483646;background:#fff;color:#16324a;border:1px solid #80b5cf;border-radius:9px;padding:10px 12px;box-shadow:0 2px 12px #0002;font:13px/1.4 system-ui;width:330px;max-width:calc(100vw - 24px)';
   const title = document.createElement('strong');
-  title.textContent = 'DuoCards Auto Import';
+  title.textContent = `DuoCards Auto Import v${VERSION}`;
   const status = document.createElement('div');
   status.setAttribute('role', 'status');
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.textContent = 'Pause';
-  toggle.style.cssText = 'margin-top:6px;padding:3px 12px;cursor:pointer';
+  const summary = document.createElement('div');
+  summary.style.cssText = 'font-size:12px;color:#506779;margin:4px 0';
+  const controls = document.createElement('div');
+  controls.style.cssText = 'display:flex;gap:5px;flex-wrap:wrap';
+  function control(label, handler) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = label;
+    button.style.cssText = 'padding:3px 8px;cursor:pointer';
+    button.addEventListener('click', handler);
+    controls.append(button);
+    return button;
+  }
+  const toggle = control('Pause', () => { controller.toggle(performance.now()); run(); });
+  const collapse = control('Collapse log', () => {
+    history.hidden = !history.hidden;
+    collapse.textContent = history.hidden ? 'Expand log' : 'Collapse log';
+    collapse.setAttribute('aria-expanded', String(!history.hidden));
+  });
+  collapse.setAttribute('aria-expanded', 'true');
+  control('Clear log', () => { messages.length = 0; history.replaceChildren(); });
+  const copy = control('Copy log', async () => {
+    try {
+      await navigator.clipboard.writeText([title.textContent, ...messages, controller.summary()].join('\n'));
+      copyStatus.textContent = 'Log copied';
+    } catch {
+      copyStatus.textContent = 'Copy unavailable — select and copy the log text below';
+      history.hidden = false;
+      collapse.textContent = 'Collapse log'; collapse.setAttribute('aria-expanded', 'true');
+    }
+  });
+  const copyStatus = document.createElement('div');
+  copyStatus.setAttribute('role', 'status');
+  copyStatus.style.fontSize = '12px';
   const history = document.createElement('div');
   history.setAttribute('role', 'log');
-  history.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow-y:auto;margin-top:6px';
-  panel.append(title, status, toggle, history);
+  history.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow-y:auto;margin-top:6px;user-select:text';
+  panel.append(title, status, summary, controls, copyStatus, history);
   document.body.append(panel);
-  toggle.addEventListener('click', () => { controller.toggle(performance.now()); run(); });
 
-  function visible(el) {
-    return !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
-  }
-  function enabled(el) {
-    return visible(el) && !el.disabled && el.getAttribute('aria-disabled') !== 'true';
-  }
-  function button(root, label) {
-    return Array.from(root.querySelectorAll('button')).find(el => visible(el) && el.textContent.trim().toLowerCase() === label);
+  const visible = el => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+  const enabled = el => visible(el) && !el.disabled && el.getAttribute('aria-disabled') !== 'true';
+  const button = (root, label) => Array.from(root.querySelectorAll('button'))
+    .find(el => visible(el) && el.textContent.trim().toLowerCase() === label);
+  let form = null, active = false, blocked = false, resetSignal = 0;
+  let priorAlerts = new Map();
+  const resetText = 'Progress has been reset. Card will reappear in your learning deck.';
+  let notificationState = { blocker: '' };
+  function captureNotifications() {
+    const alerts = Array.from(document.querySelectorAll('[role="alert"], [role="dialog"], [aria-modal="true"]'))
+      .filter(el => visible(el) && !el.contains(form) && !panel.contains(el));
+    const current = new Map();
+    let blocker = '';
+    for (const el of alerts) {
+      const text = el.textContent.trim();
+      current.set(el, text);
+      if (text === resetText && priorAlerts.get(el) !== text) resetSignal++;
+      const success = text === resetText || /MuiAlert-(?:standard|filled|outlined)?Success/i.test(el.className || '') ||
+        /^(?:Card (?:has been )?added|Added successfully|Card saved successfully)[.!]?$/i.test(text);
+      if (text && !success) blocker = 'App message — ' + text.slice(0, 180);
+    }
+    priorAlerts = current;
+    notificationState = { blocker };
   }
   function read() {
-    const save = document.querySelector('#addCard');
-    const form = save?.closest('form');
-    const importing = form?.querySelector('[class*="CardForm__Importing"]');
+    const supported = ['/main/card', '/library/edit'].includes(location.pathname.replace(/\/$/, ''));
+    if (!supported) { form = null; return { active: false, supported: false }; }
+    const save = Array.from(document.querySelectorAll('#addCard')).find(visible);
+    form = save?.closest('form');
+    if (!visible(form)) return { active: false, supported: true };
+    captureNotifications();
+    const importing = form.querySelector('[class*="CardForm__Importing"]');
     const match = importing?.textContent.match(/Import\s*(\d+)\s*\/\s*(\d+)/);
-    const supportedRoute = ['/main/card', '/library/edit'].includes(location.pathname.replace(/\/$/, ''));
-    if (!supportedRoute || !visible(form)) return { active: false };
-    // The library editor is itself a dialog, not an error or confirmation.
-    const alerts = Array.from(document.querySelectorAll('[role="alert"], [role="dialog"], [aria-modal="true"]'))
-      .filter(el => visible(el) && !el.contains(form));
-    const successText = 'Progress has been reset. Card will reappear in your learning deck.';
-    const resetSuccess = alerts.some(el => el.textContent.trim() === successText);
-    const success = el => el.textContent.trim() === successText ||
-      /MuiAlert-(?:standard|filled|outlined)?Success/i.test(el.className || '') ||
-      /^(?:Card (?:has been )?added|Added successfully|Card saved successfully)[.!]?$/i.test(el.textContent.trim());
-    const addedSuccess = alerts.some(el => success(el) && /added|saved/i.test(el.textContent));
-    const unexpected = alerts.find(el => el.textContent.trim() && !success(el));
-    const blocker = unexpected ? 'App message — ' + unexpected.textContent.trim().slice(0, 180) : '';
-    if (!match) return {
-      active: false, blocker,
-      completed: !form.querySelector('input[name="front"]')?.value.trim() &&
-        !form.querySelector('input[name="back"]')?.value.trim(),
-    };
     const front = form.querySelector('input[name="front"]')?.value.trim() || '';
     const back = form.querySelector('input[name="back"]')?.value.trim() || '';
     const hint = form.querySelector('textarea[name="hint"]')?.value.trim() || '';
+    const common = { supported: true, context: form, resetSignal, ...notificationState };
+    if (!match) return { ...common, active: false, completed: !front && !back };
     const img = Array.from(form.querySelectorAll('[class*="CardImgPicker__ImgWrap"] img')).find(visible);
     const duplicate = Array.from(form.querySelectorAll('[class*="DuplicatedCard__Wrap"]')).find(visible);
     const reset = duplicate && button(duplicate, 'reset progress');
     const skip = button(form, 'skip');
     const busy = Array.from(form.querySelectorAll('[role="progressbar"], [aria-busy="true"]')).some(visible);
-    return {
-      active: true, position: match[1] + '/' + match[2], front, back, hint,
-      imageSource: img?.currentSrc || img?.src || '',
-      imageReady: !!img && img.complete && img.naturalWidth > 0,
-      busy, duplicate: !!duplicate, resetSuccess, addedSuccess,
-      saveEnabled: enabled(save), resetEnabled: enabled(reset), skipEnabled: enabled(skip),
-      blocker,
-      controls: { save, reset, skip },
-    };
+    return { ...common, active: true, position: match[1] + '/' + match[2], front, back, hint,
+      imageSource: img?.currentSrc || img?.src || '', imageReady: !!img && img.complete && img.naturalWidth > 0,
+      busy, duplicate: !!duplicate, saveEnabled: enabled(save), resetEnabled: enabled(reset), skipEnabled: enabled(skip),
+      controls: { save, reset, skip } };
   }
+  function setText(el, text) { if (el.textContent !== text) el.textContent = text; }
+  const schedule = createScheduler(run, {
+    now: () => performance.now(), set: (callback, delay) => setTimeout(callback, delay), clear: id => clearTimeout(id),
+  });
   let running = false;
   function run() {
     if (running) return;
     running = true;
     try {
       const s = read();
+      active = s.active;
       const result = controller.tick(s, performance.now());
-      panel.hidden = !s.active && messages.length === 0;
-      const text = (s.position ? s.position + ' · ' : '') + result.status;
-      if (status.textContent !== text) status.textContent = text;
-      const label = result.paused ? 'Resume' : 'Pause';
-      if (toggle.textContent !== label) toggle.textContent = label;
+      blocked = !!result.paused;
+      panel.hidden = !s.supported && messages.length === 0;
+      setText(status, (s.position ? s.position + ' · ' : '') + result.status);
+      setText(summary, controller.summary());
+      setText(toggle, result.paused ? 'Resume' : 'Pause');
       if (result.action) {
-        const control = s.controls[result.action];
-        if (!enabled(control)) throw new Error('Control changed before click');
-        control.click();
+        const target = s.controls[result.action];
+        if (!enabled(target)) throw new Error('Control changed before click');
+        target.click();
       }
     } catch (error) {
-      controller.fail('Paused — ' + error.message);
-      status.textContent = 'Paused — ' + error.message;
-      toggle.textContent = 'Resume';
-    } finally { running = false; }
+      controller.fail('Paused — ' + error.message); blocked = true;
+      setText(status, 'Paused — ' + error.message); setText(toggle, 'Resume');
+    } finally {
+      running = false;
+      schedule(active && !blocked ? 250 : 2000);
+    }
+  }
+  function manual(event) {
+    if (!event.isTrusted || !active || panel.contains(event.target)) return;
+    const target = event.target;
+    if (event.type !== 'click' || target.closest?.('button,a,input,select,textarea,[role="button"]')) {
+      controller.manual(); schedule();
+    }
+  }
+  document.addEventListener('click', manual, true);
+  document.addEventListener('input', manual, true);
+  document.addEventListener('change', manual, true);
+  window.addEventListener('popstate', () => { if (active) controller.manual(); schedule(); });
+  function relevant(node) {
+    if (!node || panel.contains(node)) return false;
+    const element = node.nodeType === 1 ? node : node.parentElement;
+    return !!element && (form?.contains(element) || element.contains?.(form) ||
+      element.matches?.('form,[role="alert"],[role="dialog"],[aria-modal="true"]') ||
+      element.closest?.('[role="alert"]') || element.querySelector?.('form,[role="alert"],[role="dialog"]'));
   }
   const observer = new MutationObserver(records => {
-    if (records.some(r => !panel.contains(r.target))) run();
+    if (!records.some(r => relevant(r.target) || Array.from(r.addedNodes || []).some(relevant) ||
+        Array.from(r.removedNodes || []).some(relevant))) return;
+    // Capture brief notification edges before scheduling the more expensive form read.
+    if (active) captureNotifications();
+    schedule(active && !blocked ? 80 : 2000);
   });
-  observer.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
-  // Polling also observes React field properties, image completion and SPA URLs.
-  setInterval(run, 250);
+  observer.observe(document.body, { subtree: true, childList: true, characterData: true,
+    attributes: true, attributeFilter: ['disabled', 'aria-disabled', 'aria-busy', 'src', 'class', 'style', 'hidden'] });
   run();
 })();

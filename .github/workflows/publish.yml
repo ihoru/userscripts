@@ -49,6 +49,12 @@ jobs:
         run: |
           for script in */*.user.js; do node --check "$script"; done
           for test in */*.test.cjs; do node "$test"; done
+      - name: Install browser test dependencies
+        run: npm ci --ignore-scripts
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser transition tests
+        run: npm run test:browser
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

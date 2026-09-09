@@ -21,12 +21,15 @@ Official help: [installation](https://www.tampermonkey.net/faq.php?q=Q102), [URL
 
 ### Behavior
 
-- Starts automatically when an import counter is visible; a floating **Pause / Resume** panel shows progress.
+- Starts automatically when an import counter is visible. The panel shows the installed version and specific loading/saving status, including an idle state on supported screens.
 - Waits for the selected card image to load and the usage example to be nonempty, then for one second of stable content.
 - After 60 seconds, saves whatever is available, but only if Save is enabled. It never changes a disabled button.
 - Resets duplicates automatically. In the verified DuoCards flow, reset shows a success message and clears the fields without advancing the counter; the script then clicks Skip to advance that **already-reset** row. It never skips an ordinary unsaved row.
 - Waits for each action to finish. If an action stalls for 20 seconds, an error or unrelated dialog appears, or Save stays disabled after the content timeout, it pauses with a reason.
-- Pause persists across rows. You can handle a troublesome card manually and then Resume. Reloading resets the pause preference.
+- Pause persists across rows. Manual clicks on page controls, edits, or browser history navigation pause automation and invalidate pending confirmation. Handle the card manually and then Resume. Reloading resets the pause preference.
+- Collapse/Expand hides or shows log entries; Clear removes displayed entries without changing batch totals; Copy copies the log and summary only when clicked. Clipboard denial shows instructions for manual copying.
+- Batch totals count only confirmed operations. Saves require the expected next-row or final-row transition in the same form; resets require a fresh success notification. Unexpected transitions remain unconfirmed.
+- Notifications are captured promptly; full page reads are coalesced. Polling runs every 250ms during active work and every 2 seconds while idle or paused.
 
 The script observes the visible page; it does not call private APIs or read your clipboard. UI changes in DuoCards can require a script update. Keep only one enabled copy of the script in Tampermonkey.
 
@@ -47,3 +50,7 @@ node --check duocards-auto-import.user.js
 Tests cover loading, stability, timeout fallback, disabled buttons, duplicate reset confirmation, advancement, repeated words, click suppression, pause/resume, errors and completion. Live browser validation confirmed reset → success message → empty form → Skip → next row, and normal Save → batch completion. All 13 controller tests passed. A localhost browser fixture running the full script also completed exactly one reset, one confirmed-reset Skip, and one Save, then became idle. Live validation exercised the app controls; the extension installation itself must be verified in Chrome after installation.
 
 The page log shows completed saves and resets once and keeps entries for the current page session. See the [changelog](CHANGELOG.md) for release history.
+
+### Browser regression tests
+
+From the repository root, run `npm ci`, `npx playwright install chromium`, and `npm run test:browser`. Tests use a local intercepted HTML fixture with invented words; they never access a real DuoCards account. They cover delayed content, final saves and resets, short-lived notifications, manual intervention, errors, clipboard copying and log controls. Chromium tests must pass before publishing.

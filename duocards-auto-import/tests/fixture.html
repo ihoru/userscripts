@@ -1,0 +1,59 @@
+<!doctype html><meta charset="utf-8"><title>DuoCards import test fixture</title>
+<div role="dialog"><form>
+<div class="CardForm__Importing-fixture"></div>
+<div class="CardImgPicker__ImgWrap-fixture"><img width="40" height="40"></div>
+<label>Word <input id="frontId" name="front"></label>
+<label>Translation <input name="back"></label>
+<label>Example <textarea name="hint"></textarea></label>
+<div class="DuplicatedCard__Wrap-fixture" hidden>Duplicated card.<button type="button" id="reset">reset progress</button></div>
+<button id="addCard" type="button">Save</button><button id="skip" type="button">Skip</button>
+</form></div><output id="events"></output>
+<script>
+const form = document.querySelector('form');
+const front = form.elements.front, back = form.elements.back, hint = form.elements.hint;
+const counter = document.querySelector('.CardForm__Importing-fixture');
+const duplicate = document.querySelector('.DuplicatedCard__Wrap-fixture');
+const save = document.querySelector('#addCard');
+const img = document.querySelector('img');
+const picture = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='blue'/%3E%3C/svg%3E";
+const settings = new URLSearchParams(location.search);
+const rows = settings.has('single') ? [{word:'calm', back:'peaceful'}] :
+  [{word:'calm', back:'peaceful'}, {word:'steady', back:'stable', duplicate:true}];
+let index = 0;
+const events = { saves:0, resets:0, skips:0 };
+function report() { document.querySelector('#events').textContent = JSON.stringify(events); }
+function fill() {
+  const row = rows[index];
+  if (!row) {
+    counter.hidden = true; counter.textContent = '';
+    front.value = back.value = hint.value = ''; save.disabled = true; return;
+  }
+  counter.textContent = `Import ${index + 1} / ${rows.length}`;
+  front.value = row.word; back.value = row.back; hint.value = 'An example of ' + row.word;
+  img.src = picture; duplicate.hidden = !row.duplicate; save.disabled = !!row.duplicate;
+}
+save.onclick = () => {
+  events.saves++; report();
+  if (settings.has('error')) {
+    const alert = document.createElement('div'); alert.role = 'alert';
+    alert.textContent = 'Network error'; document.body.append(alert); return;
+  }
+  if (!settings.has('hold')) { index++; fill(); }
+};
+document.querySelector('#reset').onclick = () => {
+  events.resets++; report(); front.value = back.value = hint.value = '';
+  duplicate.hidden = true; save.disabled = true;
+  const alert = document.createElement('div'); alert.role = 'alert';
+  alert.textContent = 'Progress has been reset. Card will reappear in your learning deck.';
+  document.body.append(alert);
+  // Deliberately shorter than the coalesced DOM read interval.
+  setTimeout(() => alert.remove(), 10);
+};
+document.querySelector('#skip').onclick = () => { events.skips++; report(); index++; fill(); };
+fill(); report();
+if (settings.has('delay')) {
+  hint.value = ''; img.removeAttribute('src');
+  setTimeout(() => { img.src = picture; }, 1000);
+  setTimeout(() => { hint.value = 'The example arrived later.'; }, 2000);
+}
+</script>

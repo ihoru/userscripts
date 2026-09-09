@@ -14,7 +14,7 @@ function page(pathname, importing = true, notice = 'editor') {
   const node = (extra = {}) => ({
     style: {}, textContent: '', hidden: false,
     getClientRects: () => [{}], getAttribute: () => null,
-    setAttribute() {}, append() {}, addEventListener() {}, contains: () => false,
+    setAttribute() {}, append() {}, addEventListener() {}, contains: () => false, replaceChildren() {},
     ...extra,
   });
   const save = node({ disabled: false, closest: () => form, click: () => clicks++ });
@@ -34,7 +34,8 @@ function page(pathname, importing = true, notice = 'editor') {
     createElement: () => node(),
     getElementById: id => elements.get(id),
     querySelector: selector => selector === '#addCard' ? save : null,
-    querySelectorAll: () => notice === 'editor'
+    addEventListener() {},
+    querySelectorAll: selector => selector === '#addCard' ? [save] : notice === 'editor'
       ? [node({ textContent: 'Book editor Done Import 1 / 2', contains: el => el === form })]
       : notice === 'success' ? [node({ textContent: 'Card added.', className: 'MuiAlert-standardSuccess' })]
       : notice === 'error' ? [node({ textContent: 'Network error' })] : [],
@@ -42,7 +43,8 @@ function page(pathname, importing = true, notice = 'editor') {
   runInNewContext(source, {
     document, location: { pathname }, performance: { now: () => now },
     getComputedStyle: () => ({ visibility: 'visible' }),
-    MutationObserver: class { observe() {} }, setInterval: callback => { poll = callback; },
+    MutationObserver: class { observe() {} }, window: { addEventListener() {} },
+    setTimeout: callback => { poll = callback; return 1; }, clearTimeout() {},
   });
   now = 1000;
   poll();
