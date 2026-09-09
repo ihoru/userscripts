@@ -6,7 +6,7 @@ const source = readFileSync(process.env.USER_SCRIPT || __dirname + '/duocards-au
 
 // Execute the entire userscript against a minimal DOM matching the inspected
 // library editor. This includes URL gating, DOM reads and the actual click.
-function page(pathname, importing = true) {
+function page(pathname, importing = true, notice = 'editor') {
   let now = 0;
   let poll;
   let clicks = 0;
@@ -34,7 +34,10 @@ function page(pathname, importing = true) {
     createElement: () => node(),
     getElementById: id => elements.get(id),
     querySelector: selector => selector === '#addCard' ? save : null,
-    querySelectorAll: () => [],
+    querySelectorAll: () => notice === 'editor'
+      ? [node({ textContent: 'Book editor Done Import 1 / 2', contains: el => el === form })]
+      : notice === 'success' ? [node({ textContent: 'Card added.', className: 'MuiAlert-standardSuccess' })]
+      : notice === 'error' ? [node({ textContent: 'Network error' })] : [],
   };
   runInNewContext(source, {
     document, location: { pathname }, performance: { now: () => now },
@@ -57,4 +60,11 @@ test('full script still saves a main-card import', () => {
 test('ordinary library editing and unrelated routes stay manual', () => {
   assert.equal(page('/library/edit', false).clicks, 0);
   assert.equal(page('/library', true).clicks, 0);
+});
+
+test('success alerts do not pause imports', () => {
+  assert.equal(page('/library/edit', true, 'success').clicks, 1);
+});
+test('error alerts still block automatic clicks', () => {
+  assert.equal(page('/library/edit', true, 'error').clicks, 0);
 });

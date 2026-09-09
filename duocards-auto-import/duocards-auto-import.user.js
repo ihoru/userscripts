@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DuoCards Auto Import
 // @namespace    ihoru/userscripts
-// @version      1.0.2
+// @version      1.0.3
 // @author       Igor Polyakov (https://github.com/ihoru)
 // @description  Save loaded import cards automatically and reset duplicate progress.
 // @match        https://app.duocards.com/*
@@ -15,12 +15,22 @@
   'use strict';
 
   // Kept independent of the DOM so transitions can be tested without an account.
-  function createController() {
+  function createController(onLog = () => {}) {
     let row = null;
     let flight = null;
     let paused = false;
     let reason = '';
     let resetConfirmed = false;
+    function recordCompleted() {
+      if (!flight || flight.logged) return;
+      flight.logged = true;
+      onLog(flight.kind === 'reset'
+        ? `${flight.position} Progress reset: ${flight.front}`
+        : `${flight.position} Added: ${flight.front} - ${flight.back}`);
+    }
+    function startAction(type, s, now) {
+      return { type, kind: type, at: now, position: s.position, front: s.front, back: s.back, logged: false };
+    }
     function pause(message) {
       paused = true;
       reason = message;
@@ -34,6 +44,7 @@
       },
       tick(s, now) {
         if (!s.active) {
+          if (s.completed && !s.blocker) recordCompleted();
           row = flight = null;
           resetConfirmed = false;
           return { status: 'Idle — no import', paused };
@@ -41,18 +52,23 @@
         // Empty fields are a transition, not a new import row.
         if (!row || row.position !== s.position ||
             (s.front && row.front && s.front !== row.front)) {
+          if (row && s.position !== row.position && !s.blocker) recordCompleted();
           row = { position: s.position, front: s.front, since: now, stable: now, signature: '' };
           flight = null;
           resetConfirmed = false;
         }
         if (s.front && !row.front) { row.front = s.front; row.since = now; }
-        if (flight?.type === 'reset' && s.resetSuccess) resetConfirmed = true;
+        if (flight?.type === 'reset' && s.resetSuccess) {
+          resetConfirmed = true;
+          recordCompleted();
+        }
+        if (flight?.type === 'save' && s.addedSuccess) recordCompleted();
         if (paused) return { status: reason || 'Paused', paused: true };
         if (s.blocker) return pause(s.blocker);
         if (flight) {
           if (flight.type === 'reset') {
             if (resetConfirmed && !s.front && !s.back && !s.duplicate && s.skipEnabled) {
-              flight = { type: 'skip', at: now };
+              flight = { ...flight, type: 'skip', at: now };
               return { action: 'skip', status: 'Advancing confirmed reset' };
             }
             if (!s.duplicate && s.front && s.saveEnabled) {
@@ -79,14 +95,14 @@
         }
         if (s.duplicate) {
           if (!s.resetEnabled) return pause('Duplicate reset control is unavailable');
-          flight = { type: 'reset', at: now };
+          flight = startAction('reset', s, now);
           return { action: 'reset', status: 'Resetting duplicate progress' };
         }
         if (!s.saveEnabled) {
           if (timedOut) return pause('Save remains disabled — check the card');
           return { status: 'Waiting for enabled Save' };
         }
-        flight = { type: 'save', at: now };
+        flight = startAction('save', s, now);
         return { action: 'save', status: timedOut && !ready ? 'Saving available content (60s timeout)' : 'Saving loaded card' };
       },
       fail: pause,
@@ -100,7 +116,12 @@
 
   const panelId = 'ihoru-duocards-auto-import';
   if (document.getElementById(panelId)) return;
-  const controller = createController();
+  const messages = [];
+  const controller = createController(message => {
+    messages.push(message);
+    history.textContent = messages.join('\n');
+    history.scrollTop = history.scrollHeight;
+  });
   const panel = document.createElement('div');
   panel.id = panelId;
   panel.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483646;background:#fff;color:#16324a;border:1px solid #80b5cf;border-radius:9px;padding:10px 12px;box-shadow:0 2px 12px #0002;font:13px/1.4 system-ui;max-width:310px';
@@ -112,7 +133,10 @@
   toggle.type = 'button';
   toggle.textContent = 'Pause';
   toggle.style.cssText = 'margin-top:6px;padding:3px 12px;cursor:pointer';
-  panel.append(title, status, toggle);
+  const history = document.createElement('div');
+  history.setAttribute('role', 'log');
+  history.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow-y:auto;margin-top:6px';
+  panel.append(title, status, toggle, history);
   document.body.append(panel);
   toggle.addEventListener('click', () => { controller.toggle(performance.now()); run(); });
 
@@ -131,7 +155,23 @@
     const importing = form?.querySelector('[class*="CardForm__Importing"]');
     const match = importing?.textContent.match(/Import\s*(\d+)\s*\/\s*(\d+)/);
     const supportedRoute = ['/main/card', '/library/edit'].includes(location.pathname.replace(/\/$/, ''));
-    if (!supportedRoute || !visible(form) || !match) return { active: false };
+    if (!supportedRoute || !visible(form)) return { active: false };
+    // The library editor is itself a dialog, not an error or confirmation.
+    const alerts = Array.from(document.querySelectorAll('[role="alert"], [role="dialog"], [aria-modal="true"]'))
+      .filter(el => visible(el) && !el.contains(form));
+    const successText = 'Progress has been reset. Card will reappear in your learning deck.';
+    const resetSuccess = alerts.some(el => el.textContent.trim() === successText);
+    const success = el => el.textContent.trim() === successText ||
+      /MuiAlert-(?:standard|filled|outlined)?Success/i.test(el.className || '') ||
+      /^(?:Card (?:has been )?added|Added successfully|Card saved successfully)[.!]?$/i.test(el.textContent.trim());
+    const addedSuccess = alerts.some(el => success(el) && /added|saved/i.test(el.textContent));
+    const unexpected = alerts.find(el => el.textContent.trim() && !success(el));
+    const blocker = unexpected ? 'App message — ' + unexpected.textContent.trim().slice(0, 180) : '';
+    if (!match) return {
+      active: false, blocker,
+      completed: !form.querySelector('input[name="front"]')?.value.trim() &&
+        !form.querySelector('input[name="back"]')?.value.trim(),
+    };
     const front = form.querySelector('input[name="front"]')?.value.trim() || '';
     const back = form.querySelector('input[name="back"]')?.value.trim() || '';
     const hint = form.querySelector('textarea[name="hint"]')?.value.trim() || '';
@@ -139,18 +179,14 @@
     const duplicate = Array.from(form.querySelectorAll('[class*="DuplicatedCard__Wrap"]')).find(visible);
     const reset = duplicate && button(duplicate, 'reset progress');
     const skip = button(form, 'skip');
-    const alerts = Array.from(document.querySelectorAll('[role="alert"], [role="dialog"], [aria-modal="true"]')).filter(visible);
-    const successText = 'Progress has been reset. Card will reappear in your learning deck.';
-    const resetSuccess = alerts.some(el => el.textContent.trim() === successText);
-    const unexpected = alerts.find(el => el.textContent.trim() && el.textContent.trim() !== successText);
     const busy = Array.from(form.querySelectorAll('[role="progressbar"], [aria-busy="true"]')).some(visible);
     return {
       active: true, position: match[1] + '/' + match[2], front, back, hint,
       imageSource: img?.currentSrc || img?.src || '',
       imageReady: !!img && img.complete && img.naturalWidth > 0,
-      busy, duplicate: !!duplicate, resetSuccess,
+      busy, duplicate: !!duplicate, resetSuccess, addedSuccess,
       saveEnabled: enabled(save), resetEnabled: enabled(reset), skipEnabled: enabled(skip),
-      blocker: unexpected ? 'App message — ' + unexpected.textContent.trim().slice(0, 180) : '',
+      blocker,
       controls: { save, reset, skip },
     };
   }
@@ -161,7 +197,7 @@
     try {
       const s = read();
       const result = controller.tick(s, performance.now());
-      panel.hidden = !s.active;
+      panel.hidden = !s.active && messages.length === 0;
       const text = (s.position ? s.position + ' · ' : '') + result.status;
       if (status.textContent !== text) status.textContent = text;
       const label = result.paused ? 'Resume' : 'Pause';

@@ -97,3 +97,39 @@ test('word changes restart content waiting; empty transitional forms never save'
   assert.equal(c.tick(card({ front: 'other' }), 1000).action, undefined);
   assert.equal(c.tick(card({ front: '', back: '' }), 2000).action, undefined);
 });
+
+
+test('logs successful saves once with the completed row values, then continues', () => {
+  const logs = []; const c = createController(line => logs.push(line));
+  settled(c);
+  const next = card({ position: '2/2', front: 'next', back: 'next translation' });
+  c.tick(next, 1500);
+  assert.deepEqual(logs, ['1/2 Added: word - translation']);
+  assert.equal(c.tick(next, 2500).action, 'save');
+  c.tick({ active: false, completed: true }, 3000);
+  c.tick({ active: false, completed: true }, 3500);
+  assert.deepEqual(logs, ['1/2 Added: word - translation', '2/2 Added: next - next translation']);
+});
+test('reset log keeps the original word through empty form and Skip', () => {
+  const logs = []; const c = createController(line => logs.push(line));
+  settled(c, card({ duplicate: true, resetEnabled: true }));
+  const empty = card({ front: '', back: '', resetSuccess: true });
+  assert.equal(c.tick(empty, 1500).action, 'skip');
+  c.tick(empty, 1600);
+  c.tick(card({ position: '2/2', front: 'next' }), 2000);
+  assert.deepEqual(logs, ['1/2 Progress reset: word']);
+});
+test('success toast logs once without pausing or double counting the transition', () => {
+  const logs = []; const c = createController(line => logs.push(line));
+  settled(c);
+  assert.equal(c.tick(card({ addedSuccess: true }), 1200).paused, undefined);
+  c.tick(card({ position: '2/2' }), 1500);
+  assert.deepEqual(logs, ['1/2 Added: word - translation']);
+});
+test('clicks and navigation away are not logged as successful operations', () => {
+  const logs = []; const c = createController(line => logs.push(line));
+  settled(c);
+  assert.deepEqual(logs, []);
+  c.tick({ active: false }, 2000);
+  assert.deepEqual(logs, []);
+});
