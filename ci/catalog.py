@@ -17,7 +17,7 @@ def release_html(source, changelog):
         raise ValueError(f'No release bullets for {version}')
     date = f' · {html.escape(section[1])}' if section[1] else ''
     items = ''.join(f'<li>{html.escape(line)}</li>' for line in bullets)
-    return f'<section class="release" aria-label="Latest release"><h4>Version {html.escape(version)}{date}</h4><p>Latest changes</p><ul>{items}</ul></section>'
+    return f'<section class="release" aria-label="Latest release"><h4>Version {html.escape(version)}{date}</h4><details><summary>Latest changes</summary><ul>{items}</ul></details></section>'
 
 
 def render(root, page):

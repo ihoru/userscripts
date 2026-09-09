@@ -11,7 +11,7 @@ Small browser scripts that automate repetitive tasks. Browse the [script catalog
 | Name | Description | Install |
 | --- | --- | --- |
 | [DuoCards Auto Import](duocards-auto-import/) | Saves loaded import cards, resets duplicate progress, and logs completed actions. | [Install / update](https://ihoru.github.io/userscripts/duocards-auto-import/duocards-auto-import.user.js) |
-| [GitLab → TopTracker](gitlab-toptracker/) · [Changelog](gitlab-toptracker/CHANGELOG.md) | Adds a Start TopTracker link to PSA GitLab issues; requires a separately installed desktop handler. | [Install / update](https://ihoru.github.io/userscripts/gitlab-toptracker/gitlab-toptracker.user.js) |
+| [GitLab → TopTracker](gitlab-toptracker/) · [Changelog](gitlab-toptracker/CHANGELOG.md) | Adds a Start TopTracker link only on [git.psa-europe.com](https://git.psa-europe.com/); requires a separate desktop handler. See [handler setup](gitlab-toptracker/README.md#desktop-handler-setup-linux) and [other GitLab hosts](gitlab-toptracker/README.md#using-another-gitlab-instance-or-gitlabcom). | [Install / update](https://ihoru.github.io/userscripts/gitlab-toptracker/gitlab-toptracker.user.js) |
 
 ## How to use
 

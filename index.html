@@ -13,14 +13,17 @@
     header { display:flex; justify-content:space-between; gap:24px; font-size:14px; }
     a { color:var(--blue); text-underline-offset:4px; }
     a:hover { text-decoration-thickness:2px; }
-    a:focus-visible { outline:3px solid var(--blue); outline-offset:5px; }
+    a:focus-visible, summary:focus-visible { outline:3px solid var(--blue); outline-offset:5px; }
     .brand { color:var(--ink); text-decoration:none; font-weight:700; }
     .hero { padding:40px 0 50px; max-width:740px; }
     h1 { font-size:clamp(40px,7vw,72px); line-height:1.06; letter-spacing:-.045em; margin:0 0 24px; font-weight:750; }
     h1 span { color:var(--blue); }
     .intro { max-width:610px; font-size:20px; color:var(--muted); }
     h2 { font-size:24px; letter-spacing:-.02em; margin:0 0 18px; }
-    .script { display:grid; grid-template-columns:1fr 215px; gap:32px; background:var(--white); border:1px solid var(--line); border-radius:16px; padding:32px; }
+    .catalog-heading { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:12px 24px; margin-bottom:18px; }
+    .catalog-heading h2 { margin:0; }
+    .contents { display:flex; flex-wrap:wrap; gap:8px 20px; font-size:15px; }
+    .script { display:grid; grid-template-columns:1fr 215px; gap:32px; background:var(--white); border:1px solid var(--line); border-radius:16px; padding:32px; scroll-margin-top:24px; }
     .script + .script { margin-top:24px; }
     .script h3 { margin:0 0 8px; font-size:25px; line-height:1.25; }
     .script p { margin:0 0 16px; color:var(--muted); }
@@ -31,7 +34,9 @@
     .action small { color:var(--muted); font-size:13px; }
     .release { grid-column:1 / -1; border-top:1px solid var(--line); padding-top:20px; }
     .release h4 { margin:0 0 8px; font-size:15px; color:var(--blue); }
-    .release p { margin:0 0 6px; font-size:14px; font-weight:650; }
+    .release summary { cursor:pointer; font-size:14px; font-weight:650; color:var(--ink); }
+    .release summary::marker { color:var(--blue); }
+    .release details[open] summary { margin-bottom:8px; }
     .release ul { margin:0; padding-left:20px; color:var(--muted); font-size:14px; }
     .release li { counter-increment:none; }
     .release li::before { content:none; }
@@ -50,19 +55,26 @@
   <header><a class="brand" href="./">Igor Polyakov / Userscripts</a><a href="https://github.com/ihoru/userscripts">GitHub ↗</a></header>
   <main>
     <section class="hero" aria-labelledby="heading"><h1 id="heading">Fewer clicks.<br><span>Same browser.</span></h1><p class="intro">Small scripts that take care of repetitive tasks on the websites you already use. Made by <a href="https://github.com/ihoru">Igor Polyakov</a>.</p></section>
-    <section aria-labelledby="scripts"><h2 id="scripts">Available scripts</h2>
-      <article class="script">
+    <section aria-labelledby="scripts">
+      <div class="catalog-heading">
+        <h2 id="scripts">Available scripts</h2>
+        <nav class="contents" aria-label="Script contents">
+          <a href="#duocards-auto-import">DuoCards Auto Import</a>
+          <a href="#gitlab-toptracker">GitLab → TopTracker</a>
+        </nav>
+      </div>
+      <article class="script" id="duocards-auto-import">
         <div><div class="tag">DuoCards · Vocabulary import</div><h3>DuoCards Auto Import</h3><p>Import words without saving every card by hand. Waits for the picture and usage example, saves the card, and resets progress for words already in your vocabulary.</p><p>Works in the main card screen and book editor, with a Pause button and a log of completed actions.</p><a href="https://github.com/ihoru/userscripts/tree/main/duocards-auto-import">Details &amp; source code ↗</a> · <a href="https://github.com/ihoru/userscripts/blob/main/duocards-auto-import/CHANGELOG.md">Changelog</a></div>
         <div class="action"><a class="install" href="duocards-auto-import/duocards-auto-import.user.js">Install / update ↗</a><small>Opens in Tampermonkey</small></div>
         <!-- release:duocards-auto-import/duocards-auto-import.user.js -->
-        <section class="release" aria-label="Latest release"><h4>Version 1.1.2 · 2026-09-09</h4><p>Latest changes</p><ul><li>Handle the native “That&#x27;s already in the set.” alert during automatic library saves without blocking the import.</li><li>Log and count existing set items separately; allow automatic advancement or click Skip once if the same item remains.</li><li>Preserve other browser alerts and pause for manual acknowledgement.</li></ul></section>
+        <section class="release" aria-label="Latest release"><h4>Version 1.1.2 · 2026-09-09</h4><details><summary>Latest changes</summary><ul><li>Handle the native “That&#x27;s already in the set.” alert during automatic library saves without blocking the import.</li><li>Log and count existing set items separately; allow automatic advancement or click Skip once if the same item remains.</li><li>Preserve other browser alerts and pause for manual acknowledgement.</li></ul></details></section>
         <!-- /release -->
       </article>
-      <article class="script">
-        <div><div class="tag">PSA GitLab · Time tracking</div><h3>GitLab → TopTracker</h3><p>Start a TopTracker activity from a PSA GitLab issue with a namespace/project!ISSUE TITLE description.</p><p>Adds a Start TopTracker link below the issue title. Requires a separately installed desktop protocol handler.</p><a href="https://github.com/ihoru/userscripts/tree/main/gitlab-toptracker">Details &amp; source code ↗</a> · <a href="https://github.com/ihoru/userscripts/blob/main/gitlab-toptracker/CHANGELOG.md">Changelog</a></div>
+      <article class="script" id="gitlab-toptracker">
+        <div><div class="tag">PSA GitLab · Time tracking</div><h3>GitLab → TopTracker</h3><p>Start a TopTracker activity from a PSA GitLab issue with a namespace/project!ISSUE TITLE description.</p><p>Works only on <a href="https://git.psa-europe.com/">git.psa-europe.com</a> as distributed. Requires a separately installed Linux desktop handler; see <a href="https://github.com/ihoru/userscripts/tree/main/gitlab-toptracker#desktop-handler-setup-linux">handler setup</a> and <a href="https://github.com/ihoru/userscripts/tree/main/gitlab-toptracker#using-another-gitlab-instance-or-gitlabcom">adapting it for your GitLab host or GitLab.com</a>.</p><a href="https://github.com/ihoru/userscripts/tree/main/gitlab-toptracker">Details &amp; source code ↗</a> · <a href="https://github.com/ihoru/userscripts/blob/main/gitlab-toptracker/CHANGELOG.md">Changelog</a></div>
         <div class="action"><a class="install" href="gitlab-toptracker/gitlab-toptracker.user.js">Install / update ↗</a><small>Opens in Tampermonkey</small></div>
         <!-- release:gitlab-toptracker/gitlab-toptracker.user.js -->
-        <section class="release" aria-label="Latest release"><h4>Version 0.1.1 · 2026-09-09</h4><p>Latest changes</p><ul><li>Package the script with installation instructions, a changelog, and a public catalog entry.</li><li>Enable automatic updates through stable GitHub Pages URLs while preserving the existing script identity.</li><li>Add author, MIT license, support and homepage metadata, and disable execution in frames.</li><li>Preserve the supplied Start TopTracker button and protocol-link behavior.</li></ul></section>
+        <section class="release" aria-label="Latest release"><h4>Version 0.1.1 · 2026-09-09</h4><details><summary>Latest changes</summary><ul><li>Package the script with installation instructions, a changelog, and a public catalog entry.</li><li>Enable automatic updates through stable GitHub Pages URLs while preserving the existing script identity.</li><li>Add author, MIT license, support and homepage metadata, and disable execution in frames.</li><li>Preserve the supplied Start TopTracker button and protocol-link behavior.</li></ul></details></section>
         <!-- /release -->
       </article>
     </section>
