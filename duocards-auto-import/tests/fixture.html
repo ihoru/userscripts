@@ -34,6 +34,13 @@ function fill() {
 }
 save.onclick = () => {
   events.saves++; report();
+  if (settings.has('existing')) {
+    alert("That's already in the set.");
+    if (settings.has('advance')) { index++; fill(); }
+    if (settings.has('empty')) { front.value = back.value = hint.value = ''; save.disabled = true; }
+    return;
+  }
+  if (settings.has('native-error')) { alert('Unexpected warning'); return; }
   if (settings.has('error')) {
     const alert = document.createElement('div'); alert.role = 'alert';
     alert.textContent = 'Network error'; document.body.append(alert); return;

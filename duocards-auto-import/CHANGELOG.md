@@ -1,5 +1,11 @@
 # DuoCards Auto Import changelog
 
+## 1.1.2 — 2026-09-09
+
+- Handle the native “That's already in the set.” alert during automatic library saves without blocking the import.
+- Log and count existing set items separately; allow automatic advancement or click Skip once if the same item remains.
+- Preserve other browser alerts and pause for manual acknowledgement.
+
 ## 1.1.1 — 2026-09-09
 
 - Point Tampermonkey's bug-report link directly to the repository's bug-report template.

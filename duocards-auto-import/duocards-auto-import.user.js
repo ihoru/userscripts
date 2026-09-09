@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DuoCards Auto Import
 // @namespace    ihoru/userscripts
-// @version      1.1.1
+// @version      1.1.2
 // @license      MIT
 // @author       Igor Polyakov (https://github.com/ihoru)
 // @description  Save loaded import cards automatically and reset duplicate progress.
@@ -17,7 +17,7 @@
 
 (function () {
   'use strict';
-  const VERSION = '1.1.1';
+  const VERSION = '1.1.2';
 
   const SUPPORT_URL = 'https://github.com/ihoru/userscripts/issues/new?template=bug_report.yml';
   function bugReportURL(info = {}, agent = '', pathname = '') {
@@ -38,7 +38,7 @@
 
   function createController(onLog = () => {}) {
     let row = null, flight = null, paused = false, reason = '', batch = false, ended = false;
-    let counts = { added: 0, reset: 0 };
+    let counts = { added: 0, reset: 0, existing: 0 };
     const position = value => (value || '').split('/').map(Number);
     function pause(message) {
       paused = true;
@@ -48,7 +48,10 @@
     function recordCompleted() {
       if (!flight || flight.logged) return;
       flight.logged = true;
-      if (flight.kind === 'reset') {
+      if (flight.kind === 'existing') {
+        counts.existing++;
+        onLog(`${flight.position} Already in set: ${flight.front}`);
+      } else if (flight.kind === 'reset') {
         counts.reset++;
         onLog(`${flight.position} Progress reset: ${flight.front}`);
       } else {
@@ -62,7 +65,18 @@
         context: s.context, resetSignal: s.resetSignal || 0 };
     }
     return {
-      summary: () => `${counts.added} added · ${counts.reset} progress resets`,
+      summary: () => `${counts.added} added · ${counts.reset} progress resets` +
+        (counts.existing ? ` · ${counts.existing} already in set` : ''),
+      alreadyInSet(s, now) {
+        if (paused || !s.active || s.blocker || !flight || flight.type !== 'save' ||
+            flight.kind !== 'save' || s.context !== flight.context || s.position !== flight.position ||
+            (s.front !== flight.front && (s.front || s.back))) return false;
+        flight.kind = 'existing';
+        flight.at = now;
+        flight.skipSignature = null;
+        recordCompleted();
+        return true;
+      },
       toggle(now) {
         paused = !paused;
         reason = paused ? 'Paused by you' : '';
@@ -102,7 +116,7 @@
           batch = false;
           return { status: paused ? reason : ended ? 'Import finished' : 'Idle — no import', paused };
         }
-        if (!batch) { batch = true; ended = false; counts = { added: 0, reset: 0 }; }
+        if (!batch) { batch = true; ended = false; counts = { added: 0, reset: 0, existing: 0 }; }
         if (!row || row.position !== s.position || row.context !== s.context ||
             (s.front && row.front && s.front !== row.front)) {
           row = { position: s.position, front: s.front, context: s.context,
@@ -112,6 +126,16 @@
         if (paused) return { status: reason, paused: true };
         if (s.blocker) return pause(s.blocker);
         if (flight) {
+          if (flight.kind === 'existing' && flight.type === 'save') {
+            const sameItem = (s.front === flight.front && s.back === flight.back) || (!s.front && !s.back);
+            if (!sameItem) { flight = null; return pause('Card changed after already-in-set alert — check the card'); }
+            const signature = JSON.stringify([s.front, s.back, s.skipEnabled, s.busy]);
+            if (signature !== flight.skipSignature) { flight.skipSignature = signature; flight.stable = now; }
+            if (s.skipEnabled && !s.busy && now - flight.stable >= 1000) {
+              flight.type = 'skip'; flight.at = now;
+              return { action: 'skip', status: 'Advancing item already in set' };
+            }
+          }
           if (flight.type === 'reset' && flight.logged) {
             if (!s.front && !s.back && !s.duplicate && s.skipEnabled) {
               flight = { ...flight, type: 'skip', at: now };
@@ -125,7 +149,7 @@
           }
           if (flight) {
             if (now - flight.at >= 20000) return pause(`No confirmation after ${flight.type} — check the card`);
-            return { status: flight.type === 'save' ? 'Saving — waiting for confirmation' :
+            return { status: flight.kind === 'existing' ? 'Waiting for item already in set to advance' : flight.type === 'save' ? 'Saving — waiting for confirmation' :
               flight.type === 'reset' ? 'Resetting progress — waiting for confirmation' : 'Advancing confirmed reset' };
           }
         }
@@ -300,6 +324,22 @@
   const schedule = createScheduler(run, {
     now: () => performance.now(), set: (callback, delay) => setTimeout(callback, delay), clear: id => clearTimeout(id),
   });
+  // Native alerts cannot be clicked from page code once open. Intercept only
+  // this known acknowledgement while our own library Save is pending.
+  const nativeAlert = window.alert;
+  window.alert = function (message) {
+    if (message === "That's already in the set." && location.pathname === '/library/edit') {
+      try {
+        if (controller.alreadyInSet(read(), performance.now())) { schedule(); return; }
+      } catch { /* Preserve the native alert if inspection fails. */ }
+    }
+    if (active) {
+      controller.manual();
+      controller.fail('Browser alert requires acknowledgement — check the card, then Resume');
+      schedule();
+    }
+    return Reflect.apply(nativeAlert, window, arguments);
+  };
   let running = false;
   function run() {
     refreshReportLink();

@@ -43,7 +43,7 @@ test('manual field edits invalidate pending confirmation', async ({ page }) => {
 test('final normal save, version display, collapse, copy and clear', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await start(page, '?single');
-  await expect(page.locator(panel)).toContainText('v1.1.1');
+  await expect(page.locator(panel)).toContainText('v1.1.2');
   await expect(page.locator(panel)).toContainText('Import finished');
   await expect(page.locator(panel)).toContainText('1/1 Added: calm - peaceful');
   await page.getByRole('button', { name:'Collapse log' }).click();
@@ -73,9 +73,52 @@ test('panel report link prefills the template without page query data', async ({
   const url = new URL(await link.getAttribute('href'));
   expect(url.pathname).toBe('/ihoru/userscripts/issues/new');
   expect(url.searchParams.get('template')).toBe('bug_report.yml');
-  expect(url.searchParams.get('script')).toBe('DuoCards Auto Import 1.1.1');
+  expect(url.searchParams.get('script')).toBe('DuoCards Auto Import 1.1.2');
   expect(url.searchParams.get('environment')).toContain('Tampermonkey 5.5');
   expect(url.searchParams.get('page')).toBe('app.duocards.com/library/edit');
   expect(url.href).not.toContain('secret');
   await expect(link).toHaveAttribute('target', '_blank');
+});
+
+
+for (const mode of ['', '&advance', '&empty']) {
+  test(`already-in-set native alert continues ${mode || 'unchanged row'}`, async ({ page }) => {
+    const dialogs = [];
+    page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.dismiss(); });
+    await start(page, '?single&existing' + mode);
+    await expect(page.locator(panel)).toContainText('Import finished');
+    await expect(page.locator(panel)).toContainText('1/1 Already in set: calm');
+    await expect(page.locator(panel)).toContainText('0 added · 0 progress resets · 1 already in set');
+    await expect(page.locator('#events')).toHaveText(JSON.stringify({saves:1,resets:0,skips:mode === '&advance' ? 0 : 1}));
+    expect(dialogs).toEqual([]);
+  });
+}
+test('unknown native alerts are preserved and pause automation', async ({ page }) => {
+  const dialogs = [];
+  page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.dismiss(); });
+  await start(page, '?single&native-error');
+  await expect(page.locator(panel)).toContainText('Browser alert requires acknowledgement');
+  expect(dialogs).toEqual(['Unexpected warning']);
+  await expect(page.locator(panel)).not.toContainText('Added:');
+});
+
+test('the same alert stays native on main-card imports', async ({ page }) => {
+  const dialogs = [];
+  page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.dismiss(); });
+  await page.route('https://app.duocards.com/**', route => route.fulfill({contentType:'text/html', body:fixture}));
+  await page.goto('https://app.duocards.com/main/card?single&existing');
+  await page.addScriptTag({content:script});
+  await expect(page.locator(panel)).toContainText('Browser alert requires acknowledgement');
+  expect(dialogs).toEqual(["That's already in the set."]);
+  await expect(page.locator('#events')).toHaveText('{"saves":1,"resets":0,"skips":0}');
+});
+test('manual library saves retain the native alert while paused', async ({ page }) => {
+  const dialogs = [];
+  page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.dismiss(); });
+  await start(page, '?single&existing&delay');
+  await page.getByRole('button', {name:'Pause', exact:true}).click();
+  await page.getByRole('button', {name:'Save', exact:true}).click();
+  await expect(page.locator(panel)).toContainText('Browser alert requires acknowledgement');
+  expect(dialogs).toEqual(["That's already in the set."]);
+  await expect(page.locator(panel)).not.toContainText('Already in set:');
 });

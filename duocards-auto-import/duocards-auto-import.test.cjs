@@ -218,3 +218,34 @@ test('bug reports leave missing versions editable and omit private paths', () =>
   assert.equal(url.searchParams.get('page'), 'app.duocards.com/[path omitted]');
   assert.ok(!url.href.includes('private-id'));
 });
+
+test('existing set items log once, skip once, and never count as added', () => {
+  const logs = []; const c = createController(m => logs.push(m));
+  const s = card(); settled(c, s);
+  assert.equal(c.alreadyInSet(s, 1100), true);
+  assert.equal(c.alreadyInSet(s, 1101), false);
+  assert.equal(c.tick(s, 1200).action, undefined);
+  assert.equal(c.tick(s, 2200).action, 'skip');
+  assert.equal(c.tick(s, 2300).action, undefined);
+  c.tick(card({ position:'2/2', front:'next' }), 2400);
+  assert.deepEqual(logs, ['1/2 Already in set: word']);
+  assert.equal(c.summary(), '0 added · 0 progress resets · 1 already in set');
+});
+test('native acknowledgement requires an unpaused pending save on the same item', () => {
+  const c = createController(); const s = card();
+  assert.equal(c.alreadyInSet(s, 0), false);
+  settled(c, s);
+  assert.equal(c.alreadyInSet(card({position:'2/2'}), 1100), false);
+  assert.equal(c.alreadyInSet(card({front:'different'}), 1100), false);
+  c.toggle(1100);
+  assert.equal(c.alreadyInSet(s, 1200), false);
+});
+test('disabled Skip stalls safely after an existing-set alert; manual action cancels skipping', () => {
+  const c = createController(); const s = card({skipEnabled:false}); settled(c, s);
+  c.alreadyInSet(s, 1100);
+  assert.equal(c.tick(s, 2200).action, undefined);
+  assert.equal(c.tick(s, 21100).paused, true);
+  const other = createController(); settled(other); other.alreadyInSet(card(), 1100);
+  other.manual();
+  assert.equal(other.tick(card(), 3000).action, undefined);
+});
