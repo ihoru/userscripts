@@ -18,8 +18,8 @@ Tampermonkey checks the public script URLs for updates on its normal schedule wh
 
 ## Repository and publishing
 
-Each script has a separate folder with source, tests, documentation, and an optional ZIP installer. Add future scripts as separate folders and add an entry to this README and `index.html`.
+Each script has a separate folder with source, tests, and documentation. Add future scripts as separate folders and add an entry to this README and `index.html`.
 
 GitHub Pages publishes the root of `main` at https://ihoru.github.io/userscripts/. The `.nojekyll` file keeps publishing static. There is no framework, build dependency, or analytics.
 
-When releasing a script: increment `@version`, run its tests, run `python3 build-archives.py` to rebuild ZIP fallbacks, and commit and push. GitHub Pages publishes the updated script; Tampermonkey retrieves it at its next update check. Keep the `@updateURL` and `@downloadURL` pointed at the stable Pages URL, not a commit-specific URL. Verify Pages deployment before announcing a release.
+When releasing a script: increment `@version`, run its tests, and commit and push. GitHub Pages publishes the updated script; Tampermonkey retrieves it at its next update check. Keep the `@updateURL` and `@downloadURL` pointed at the stable Pages URL, not a commit-specific URL. Verify Pages deployment before announcing a release.

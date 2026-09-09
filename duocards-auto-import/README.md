@@ -15,11 +15,7 @@ Automatically processes mass imports on the main card screen (`/main/card`) and 
 
 Existing ZIP installations need this update once to enable automatic updates. Keep only one enabled copy of the script.
 
-### Offline fallback
-
-Use Tampermonkey Dashboard → Utilities → **ZIP → Choose File** and select this folder's `duocards-auto-import.install.zip`, then confirm Import. The ZIP contains only this script. Opening a local `.user.js` file does not reliably launch the preview in Chrome.
-
-Official help: [installation](https://www.tampermonkey.net/faq.php?q=Q102), [ZIP and URL import](https://www.tampermonkey.net/faq.php?locale=en&q=Q106).
+Official help: [installation](https://www.tampermonkey.net/faq.php?q=Q102), [URL import](https://www.tampermonkey.net/faq.php?locale=en&q=Q106).
 
 ### Behavior
 
@@ -47,8 +43,6 @@ node --check duocards-auto-import.user.js
 ```
 
 Tests cover loading, stability, timeout fallback, disabled buttons, duplicate reset confirmation, advancement, repeated words, click suppression, pause/resume, errors and completion. Live browser validation confirmed reset → success message → empty form → Skip → next row, and normal Save → batch completion. All 13 controller tests passed. A localhost browser fixture running the full script also completed exactly one reset, one confirmed-reset Skip, and one Save, then became idle. Live validation exercised the app controls; the extension installation itself must be verified in Chrome after installation.
-
-After editing the script, run `python3 build-archives.py` from the repository root to rebuild the ZIP before committing. The ZIP contents must match the source file.
 
 Version 1.0.2 fixes book-editor imports being incorrectly treated as idle. Full-script DOM regression tests cover both import routes and verify that ordinary library editing stays manual.
 
