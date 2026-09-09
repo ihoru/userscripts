@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a userscript that is not behaving as expected.
+body:
+  - type: markdown
+    attributes:
+      value: Please omit vocabulary, translations, account details, tokens and private URLs. Use invented examples when needed.
+  - type: input
+    id: script
+    attributes:
+      label: Script name and version
+      placeholder: DuoCards Auto Import 1.0.5
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and userscript manager versions
+      placeholder: Chrome version, Tampermonkey version
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Page location
+      description: Domain and path only; omit query parameters and private identifiers.
+      placeholder: app.duocards.com/library/edit
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: Panel status
+      description: Include the status or error, removing words, translations and account data. Say if the panel is missing.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps, expected result and actual result
+      description: Explain how to reproduce using invented sample data.
+    validations:
+      required: true

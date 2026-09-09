@@ -1,0 +1,73 @@
+name: Test and publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate metadata, installation links and release versions
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BASE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            base="$PR_BASE"
+          elif [ "$EVENT_NAME" = push ]; then
+            base="$PUSH_BASE"
+          else
+            base="$(git rev-parse HEAD^)"
+          fi
+          if [ -n "$base" ] && [ "$base" != 0000000000000000000000000000000000000000 ]; then
+            python3 ci/validate.py --base "$base"
+          else
+            python3 ci/validate.py
+          fi
+      - name: Run validator regression tests
+        run: python3 -m unittest discover -s ci -p 'test_*.py' -v
+      - name: Run every userscript test and syntax check
+        run: |
+          for script in */*.user.js; do node --check "$script"; done
+          for test in */*.test.cjs; do node "$test"; done
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/configure-pages@v5
+      - name: Stage tracked public files
+        run: |
+          mkdir _site
+          git archive HEAD | tar -x -C _site
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
+        id: deployment

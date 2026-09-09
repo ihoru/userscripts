@@ -1,6 +1,8 @@
 # DuoCards Auto Import
 
-Author: [Igor Polyakov](https://github.com/ihoru).
+Author: [Igor Polyakov](https://github.com/ihoru). Licensed under [MIT](../LICENSE).
+
+[Changelog](CHANGELOG.md) · [Report a bug](https://github.com/ihoru/userscripts/issues/new?template=bug_report.yml)
 
 Automatically processes mass imports on the main card screen (`/main/card`) and inside the book/library editor (`/library/edit`). Ordinary card editing stays manual.
 
@@ -44,13 +46,4 @@ node --check duocards-auto-import.user.js
 
 Tests cover loading, stability, timeout fallback, disabled buttons, duplicate reset confirmation, advancement, repeated words, click suppression, pause/resume, errors and completion. Live browser validation confirmed reset → success message → empty form → Skip → next row, and normal Save → batch completion. All 13 controller tests passed. A localhost browser fixture running the full script also completed exactly one reset, one confirmed-reset Skip, and one Save, then became idle. Live validation exercised the app controls; the extension installation itself must be verified in Chrome after installation.
 
-Version 1.0.2 fixes book-editor imports being incorrectly treated as idle. Full-script DOM regression tests cover both import routes and verify that ordinary library editing stays manual.
-
-Version 1.0.3 excludes the book editor itself from blocking-dialog detection and continues past success notifications. A scrolling page log records completed operations once, for example:
-
-```text
-1/2 Added: word - translation
-2/2 Progress reset: word
-```
-
-Entries use the original card values, survive the reset-to-empty-form transition, and remain visible after the batch finishes. They are kept only in the current page session. Click attempts are not logged as successful; a confirmation or import advancement is required. Picture/example loading waits and real-error pauses remain in place.
+The page log shows completed saves and resets once and keeps entries for the current page session. See the [changelog](CHANGELOG.md) for release history.
