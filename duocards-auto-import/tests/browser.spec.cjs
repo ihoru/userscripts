@@ -43,7 +43,7 @@ test('manual field edits invalidate pending confirmation', async ({ page }) => {
 test('final normal save, version display, collapse, copy and clear', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await start(page, '?single');
-  await expect(page.locator(panel)).toContainText('v1.1.0');
+  await expect(page.locator(panel)).toContainText('v1.1.1');
   await expect(page.locator(panel)).toContainText('Import finished');
   await expect(page.locator(panel)).toContainText('1/1 Added: calm - peaceful');
   await page.getByRole('button', { name:'Collapse log' }).click();
@@ -62,4 +62,20 @@ test('real errors pause and never report a successful save', async ({ page }) =>
   await expect(page.locator(panel)).toContainText('Network error');
   await expect(page.locator(panel)).not.toContainText('Added:');
   await expect(page.locator('#events')).toHaveText('{"saves":1,"resets":0,"skips":0}');
+});
+
+
+test('panel report link prefills the template without page query data', async ({ page }) => {
+  await page.addInitScript(() => { window.GM_info = { scriptHandler: 'Tampermonkey', version: '5.5' }; });
+  await start(page, '?hold&private=secret');
+  const link = page.getByRole('link', { name: 'Report a bug' });
+  await expect(link).toBeVisible();
+  const url = new URL(await link.getAttribute('href'));
+  expect(url.pathname).toBe('/ihoru/userscripts/issues/new');
+  expect(url.searchParams.get('template')).toBe('bug_report.yml');
+  expect(url.searchParams.get('script')).toBe('DuoCards Auto Import 1.1.1');
+  expect(url.searchParams.get('environment')).toContain('Tampermonkey 5.5');
+  expect(url.searchParams.get('page')).toBe('app.duocards.com/library/edit');
+  expect(url.href).not.toContain('secret');
+  await expect(link).toHaveAttribute('target', '_blank');
 });

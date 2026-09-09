@@ -41,7 +41,7 @@ function page(pathname, importing = true, notice = 'editor') {
       : notice === 'error' ? [node({ textContent: 'Network error' })] : [],
   };
   runInNewContext(source, {
-    document, location: { pathname }, performance: { now: () => now },
+    URL, document, location: { pathname }, performance: { now: () => now },
     getComputedStyle: () => ({ visibility: 'visible' }),
     MutationObserver: class { observe() {} }, window: { addEventListener() {} },
     setTimeout: callback => { poll = callback; return 1; }, clearTimeout() {},

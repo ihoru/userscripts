@@ -1,5 +1,10 @@
 # DuoCards Auto Import changelog
 
+## 1.1.1 — 2026-09-09
+
+- Point Tampermonkey's bug-report link directly to the repository's bug-report template.
+- Add Report a bug to the panel with script version, available browser and manager versions, and a sanitized page location prefilled.
+
 ## 1.1.0 — 2026-09-09
 
 - Show the installed version and separate picture, example, saving and finished statuses.

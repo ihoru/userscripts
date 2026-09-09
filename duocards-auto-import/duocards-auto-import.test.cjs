@@ -197,3 +197,24 @@ test('scheduler coalesces mutation bursts without starvation and allows idle int
   now=80;queue.clear();job.fn();assert.equal(runs,1);
   schedule(0);assert.equal([...queue.values()][0].at,160);
 });
+
+
+test('bug report metadata and prefilled fields target the issue template', () => {
+  const { bugReportURL, VERSION } = require('./duocards-auto-import.user.js');
+  const url = new URL(bugReportURL({scriptHandler:'Tampermonkey', version:'5.5'}, 'Mozilla Chrome/134.0.0.0 Safari/537.36 Edg/134.0.1', '/library/edit'));
+  assert.equal(url.origin + url.pathname, 'https://github.com/ihoru/userscripts/issues/new');
+  assert.equal(url.searchParams.get('template'), 'bug_report.yml');
+  assert.equal(url.searchParams.get('script'), `DuoCards Auto Import ${VERSION}`);
+  assert.equal(url.searchParams.get('environment'), 'Edge 134.0.1; Tampermonkey 5.5');
+  assert.equal(url.searchParams.get('page'), 'app.duocards.com/library/edit');
+  const source = require('node:fs').readFileSync(__dirname + '/duocards-auto-import.user.js', 'utf8');
+  assert.match(source, /@supportURL +https:\/\/github.com\/ihoru\/userscripts\/issues\/new\?template=bug_report.yml/);
+});
+
+test('bug reports leave missing versions editable and omit private paths', () => {
+  const { bugReportURL } = require('./duocards-auto-import.user.js');
+  const url = new URL(bugReportURL(undefined, '', '/books/private-id'));
+  assert.match(url.searchParams.get('environment'), /please fill in/);
+  assert.equal(url.searchParams.get('page'), 'app.duocards.com/[path omitted]');
+  assert.ok(!url.href.includes('private-id'));
+});

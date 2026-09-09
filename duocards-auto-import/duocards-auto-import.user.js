@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DuoCards Auto Import
 // @namespace    ihoru/userscripts
-// @version      1.1.0
+// @version      1.1.1
 // @license      MIT
 // @author       Igor Polyakov (https://github.com/ihoru)
 // @description  Save loaded import cards automatically and reset duplicate progress.
@@ -9,6 +9,7 @@
 // @run-at       document-idle
 // @grant        none
 // @noframes
+// @supportURL   https://github.com/ihoru/userscripts/issues/new?template=bug_report.yml
 // @homepageURL  https://ihoru.github.io/userscripts/
 // @updateURL    https://ihoru.github.io/userscripts/duocards-auto-import/duocards-auto-import.user.js
 // @downloadURL  https://ihoru.github.io/userscripts/duocards-auto-import/duocards-auto-import.user.js
@@ -16,7 +17,24 @@
 
 (function () {
   'use strict';
-  const VERSION = '1.1.0';
+  const VERSION = '1.1.1';
+
+  const SUPPORT_URL = 'https://github.com/ihoru/userscripts/issues/new?template=bug_report.yml';
+  function bugReportURL(info = {}, agent = '', pathname = '') {
+    // Include only diagnostic fields, never vocabulary, logs, queries or IDs.
+    const browsers = [ ['Edge', /Edg\/([\d.]+)/], ['Opera', /OPR\/([\d.]+)/],
+      ['Firefox', /Firefox\/([\d.]+)/], ['Chrome', /(?:Chrome|CriOS)\/([\d.]+)/],
+      ['Safari', /Version\/([\d.]+).*Safari\//] ];
+    const detected = browsers.find(([, pattern]) => pattern.test(agent));
+    const browser = detected ? `${detected[0]} ${agent.match(detected[1])[1]}` : 'Browser version: please fill in';
+    const manager = `${info.scriptHandler || 'Userscript manager'} ${info.version || '(version: please fill in)'}`;
+    const url = new URL(SUPPORT_URL);
+    url.searchParams.set('script', `DuoCards Auto Import ${VERSION}`);
+    url.searchParams.set('environment', `${browser}; ${manager}`);
+    const safePath = ['/main/card', '/library/edit'].includes(pathname) ? pathname : '/[path omitted]';
+    url.searchParams.set('page', `app.duocards.com${safePath}`);
+    return url.href;
+  }
 
   function createController(onLog = () => {}) {
     let row = null, flight = null, paused = false, reason = '', batch = false, ended = false;
@@ -157,7 +175,7 @@
   }
 
   if (typeof module === 'object' && module.exports && typeof document === 'undefined') {
-    module.exports = { createController, createScheduler, VERSION };
+    module.exports = { createController, createScheduler, VERSION, bugReportURL };
     return;
   }
 
@@ -208,6 +226,19 @@
       collapse.textContent = 'Collapse log'; collapse.setAttribute('aria-expanded', 'true');
     }
   });
+  const report = document.createElement('a');
+  report.textContent = 'Report a bug';
+  report.target = '_blank';
+  report.rel = 'noopener noreferrer';
+  report.style.cssText = 'padding:3px 0;color:#17658a';
+  function refreshReportLink() {
+    report.href = bugReportURL(typeof GM_info === 'object' ? GM_info : {},
+      typeof navigator === 'object' ? navigator.userAgent : '', location.pathname);
+  }
+  refreshReportLink();
+  report.addEventListener('click', refreshReportLink);
+  report.addEventListener('contextmenu', refreshReportLink);
+  controls.append(report);
   const copyStatus = document.createElement('div');
   copyStatus.setAttribute('role', 'status');
   copyStatus.style.fontSize = '12px';
@@ -271,6 +302,7 @@
   });
   let running = false;
   function run() {
+    refreshReportLink();
     if (running) return;
     running = true;
     try {
