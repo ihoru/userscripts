@@ -28,6 +28,12 @@
     .install { display:block; background:var(--blue); color:white; text-decoration:none; padding:13px 16px; border-radius:8px; font-weight:650; }
     .install:hover { background:#10499f; }
     .action small { color:var(--muted); font-size:13px; }
+    .release { grid-column:1 / -1; border-top:1px solid var(--line); padding-top:20px; }
+    .release h4 { margin:0 0 8px; font-size:15px; color:var(--blue); }
+    .release p { margin:0 0 6px; font-size:14px; font-weight:650; }
+    .release ul { margin:0; padding-left:20px; color:var(--muted); font-size:14px; }
+    .release li { counter-increment:none; }
+    .release li::before { content:none; }
     .how { padding:48px 0 16px; }
     ol { display:grid; grid-template-columns:repeat(3,1fr); gap:32px; margin:0; padding:0; list-style:none; counter-reset:step; }
     li { counter-increment:step; }
@@ -47,6 +53,9 @@
       <article class="script">
         <div><div class="tag">DuoCards · Vocabulary import</div><h3>DuoCards Auto Import</h3><p>Import words without saving every card by hand. Waits for the picture and usage example, saves the card, and resets progress for words already in your vocabulary.</p><p>Works in the main card screen and book editor, with a Pause button and a log of completed actions.</p><a href="https://github.com/ihoru/userscripts/tree/main/duocards-auto-import">Details &amp; source code ↗</a> · <a href="https://github.com/ihoru/userscripts/blob/main/duocards-auto-import/CHANGELOG.md">Changelog</a></div>
         <div class="action"><a class="install" href="duocards-auto-import/duocards-auto-import.user.js">Install / update ↗</a><small>Opens in Tampermonkey</small></div>
+        <!-- release:duocards-auto-import/duocards-auto-import.user.js -->
+        <section class="release" aria-label="Latest release"><h4>Version 1.0.5 · 2026-09-09</h4><p>Latest changes</p><ul><li>Declare the MIT license in script metadata.</li><li>Add this release history and a bug-report template.</li><li>Require tests, valid installation metadata, and version increases before publishing updates.</li><li>Card-import behavior is unchanged.</li></ul></section>
+        <!-- /release -->
       </article>
     </section>
     <section class="how" aria-labelledby="how"><h2 id="how">How to use</h2><ol>

@@ -41,6 +41,8 @@ jobs:
           else
             python3 ci/validate.py
           fi
+      - name: Check catalog versions and release notes
+        run: python3 ci/catalog.py
       - name: Run validator regression tests
         run: python3 -m unittest discover -s ci -p 'test_*.py' -v
       - name: Run every userscript test and syntax check

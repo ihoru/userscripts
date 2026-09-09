@@ -44,3 +44,5 @@ for test in */*.test.cjs; do node "$test"; done
 ```
 
 After committing, use `--base HEAD^` to validate that commit. The workflow does not deploy pull requests or non-main manual runs. Failed checks leave the previously published website and scripts in place.
+
+The catalog shows each script's version and latest changelog bullets. After changing a release, run `python3 ci/catalog.py --write` and commit the updated `index.html`. CI rejects stale summaries. For a new script, put a `<!-- release:folder/script.user.js --> … <!-- /release -->` block inside its catalog entry; the renderer fills it from metadata and `CHANGELOG.md`.
