@@ -6,19 +6,20 @@ Automatically processes mass imports on the main card screen (`/main/card`) and 
 
 ## Install without copying code
 
-Use the ZIP import flow; opening or dragging a local `.user.js` file does not reliably launch the installation preview in your Chrome setup.
+[Install / update DuoCards Auto Import](https://ihoru.github.io/userscripts/duocards-auto-import/duocards-auto-import.user.js) · [All scripts](https://ihoru.github.io/userscripts/)
 
-1. Open **Tampermonkey → Dashboard → Utilities** in Chrome.
-2. Under **ZIP**, click **Choose File** (the label can vary by version).
-3. Select `duocards-auto-import.install.zip` from this folder. With the local checkout, its full path is `/home/ihoru/projects/my/userscripts/duocards-auto-import/duocards-auto-import.install.zip`.
-4. Select the DuoCards script in the import dialog and confirm **Import**.
-5. Verify **DuoCards Auto Import** appears enabled in the Dashboard. Reload DuoCards before starting your next import; reloading an import in progress may lose its queue.
+1. Install [Tampermonkey](https://www.tampermonkey.net/) in Chrome. Enable **Allow User Scripts** if Chrome requests it.
+2. Click the Install / update link above, review the preview, and confirm in Tampermonkey.
+3. If the link displays source code, open Tampermonkey Dashboard → Utilities → **Import from URL**, paste the same public link, and install.
+4. Reload DuoCards before starting your next import. Reloading an active import may lose its queue.
 
-If Utilities is hidden, change Tampermonkey's configuration mode to **Beginner** or **Advanced**. If Chrome requires it, enable **Allow User Scripts** on Tampermonkey's extension details page (older versions use **Developer mode**). ZIP import does not require access to file URLs.
+Existing ZIP installations need this update once to enable automatic updates. Keep only one enabled copy of the script.
 
-The ZIP contains only this userscript, with no extension settings or account data. On GitHub, download the ZIP file using its file download button; do not use GitHub's whole-repository **Download ZIP** as the Tampermonkey import archive.
+### Offline fallback
 
-Official help: [ZIP import](https://www.tampermonkey.net/faq.php?locale=en&q=Q106), [Chrome userscript permissions](https://www.tampermonkey.net/faq.php#Q209).
+Use Tampermonkey Dashboard → Utilities → **ZIP → Choose File** and select this folder's `duocards-auto-import.install.zip`, then confirm Import. The ZIP contains only this script. Opening a local `.user.js` file does not reliably launch the preview in Chrome.
+
+Official help: [installation](https://www.tampermonkey.net/faq.php?q=Q102), [ZIP and URL import](https://www.tampermonkey.net/faq.php?locale=en&q=Q106).
 
 ### Behavior
 
@@ -33,7 +34,7 @@ The script observes the visible page; it does not call private APIs or read your
 
 ### Update
 
-Pull changes into the repository and import the updated `duocards-auto-import.install.zip` through the same ZIP workflow. Confirm replacement/update of the existing script if prompted and keep only one enabled copy. Script identity (`@name` and `@namespace`) stays unchanged; releases increment `@version`. Remote update checks are disabled with `@downloadURL none`, so Tampermonkey never needs GitHub credentials.
+From version 1.0.4, `@updateURL` and `@downloadURL` use the stable public GitHub Pages script URL. Tampermonkey checks for higher `@version` values on its normal schedule with update checks enabled. No GitHub login or credentials are required. For an immediate update, use the Install / update link above or Tampermonkey's update check.
 
 ### Development and verification
 

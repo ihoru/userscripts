@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name         DuoCards Auto Import
 // @namespace    ihoru/userscripts
-// @version      1.0.3
+// @version      1.0.4
 // @author       Igor Polyakov (https://github.com/ihoru)
 // @description  Save loaded import cards automatically and reset duplicate progress.
 // @match        https://app.duocards.com/*
 // @run-at       document-idle
 // @grant        none
 // @noframes
-// @downloadURL  none
+// @homepageURL  https://ihoru.github.io/userscripts/
+// @updateURL    https://ihoru.github.io/userscripts/duocards-auto-import/duocards-auto-import.user.js
+// @downloadURL  https://ihoru.github.io/userscripts/duocards-auto-import/duocards-auto-import.user.js
 // ==/UserScript==
 
 (function () {
