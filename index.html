@@ -21,6 +21,7 @@
     .intro { max-width:610px; font-size:20px; color:var(--muted); }
     h2 { font-size:24px; letter-spacing:-.02em; margin:0 0 18px; }
     .script { display:grid; grid-template-columns:1fr 215px; gap:32px; background:var(--white); border:1px solid var(--line); border-radius:16px; padding:32px; }
+    .script + .script { margin-top:24px; }
     .script h3 { margin:0 0 8px; font-size:25px; line-height:1.25; }
     .script p { margin:0 0 16px; color:var(--muted); }
     .tag { font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--blue); margin-bottom:14px; }
@@ -57,12 +58,19 @@
         <section class="release" aria-label="Latest release"><h4>Version 1.1.1 · 2026-09-09</h4><p>Latest changes</p><ul><li>Point Tampermonkey&#x27;s bug-report link directly to the repository&#x27;s bug-report template.</li><li>Add Report a bug to the panel with script version, available browser and manager versions, and a sanitized page location prefilled.</li></ul></section>
         <!-- /release -->
       </article>
+      <article class="script">
+        <div><div class="tag">PSA GitLab · Time tracking</div><h3>GitLab → TopTracker</h3><p>Start a TopTracker activity from a PSA GitLab issue with a namespace/project!ISSUE TITLE description.</p><p>Adds a Start TopTracker link below the issue title. Requires a separately installed desktop protocol handler.</p><a href="https://github.com/ihoru/userscripts/tree/main/gitlab-toptracker">Details &amp; source code ↗</a> · <a href="https://github.com/ihoru/userscripts/blob/main/gitlab-toptracker/CHANGELOG.md">Changelog</a></div>
+        <div class="action"><a class="install" href="gitlab-toptracker/gitlab-toptracker.user.js">Install / update ↗</a><small>Opens in Tampermonkey</small></div>
+        <!-- release:gitlab-toptracker/gitlab-toptracker.user.js -->
+        <section class="release" aria-label="Latest release"><h4>Version 0.1.1 · 2026-09-09</h4><p>Latest changes</p><ul><li>Package the script with installation instructions, a changelog, and a public catalog entry.</li><li>Enable automatic updates through stable GitHub Pages URLs while preserving the existing script identity.</li><li>Add author, MIT license, support and homepage metadata, and disable execution in frames.</li><li>Preserve the supplied Start TopTracker button and protocol-link behavior.</li></ul></section>
+        <!-- /release -->
+      </article>
     </section>
     <section class="how" aria-labelledby="how"><h2 id="how">How to use</h2><ol>
       <li><strong>Get Tampermonkey</strong><p>Install the <a href="https://www.tampermonkey.net/">Tampermonkey browser extension</a>. In Chrome, enable “Allow User Scripts” if prompted.</p></li>
       <li><strong>Choose a script</strong><p>Click Install / update above, review the script, and confirm installation in Tampermonkey. If the link displays code, use Dashboard → Utilities → Import from URL with that link.</p></li>
-      <li><strong>Use the website as usual</strong><p>Reload the website before your next import. Tampermonkey checks for future updates automatically on its normal schedule when update checks are enabled.</p></li>
-    </ol><p class="note">Already installed an older ZIP version? Click Install / update once to enable future updates. Finish an import before reloading so you don’t lose its queue.</p></section>
+      <li><strong>Use the website as usual</strong><p>Reload the target website after installation or an update. Tampermonkey checks for future updates automatically on its normal schedule when update checks are enabled.</p></li>
+    </ol><p class="note">Already installed an older DuoCards ZIP version or GitLab → TopTracker 0.1.0? Click Install / update once to enable future updates. Finish any active DuoCards import before reloading so you don’t lose its queue.</p></section>
   </main>
   <footer><span>By <a href="https://github.com/ihoru">Igor Polyakov</a></span><span>No account needed for this catalog. No analytics.</span></footer>
 </body>
