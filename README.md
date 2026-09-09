@@ -1,4 +1,4 @@
-# Personal userscripts
+# Useful userscripts
 
 By [Igor Polyakov](https://github.com/ihoru).
 
