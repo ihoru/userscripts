@@ -2,7 +2,7 @@
 
 Author: [Igor Polyakov](https://github.com/ihoru).
 
-Automatically processes mass imports at https://app.duocards.com/main/card. Ordinary card editing stays manual.
+Automatically processes mass imports on the main card screen (`/main/card`) and inside the book/library editor (`/library/edit`). Ordinary card editing stays manual.
 
 ## Install without copying code
 
@@ -41,9 +41,12 @@ From this folder, use Node.js to run the dependency-free tests:
 
 ```sh
 node duocards-auto-import.test.cjs
+node duocards-auto-import.dom.test.cjs
 node --check duocards-auto-import.user.js
 ```
 
 Tests cover loading, stability, timeout fallback, disabled buttons, duplicate reset confirmation, advancement, repeated words, click suppression, pause/resume, errors and completion. Live browser validation confirmed reset → success message → empty form → Skip → next row, and normal Save → batch completion. All 13 controller tests passed. A localhost browser fixture running the full script also completed exactly one reset, one confirmed-reset Skip, and one Save, then became idle. Live validation exercised the app controls; the extension installation itself must be verified in Chrome after installation.
 
 After editing the script, run `python3 build-archives.py` from the repository root to rebuild the ZIP before committing. The ZIP contents must match the source file.
+
+Version 1.0.2 fixes book-editor imports being incorrectly treated as idle. Full-script DOM regression tests cover both import routes and verify that ordinary library editing stays manual.

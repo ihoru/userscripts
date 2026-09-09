@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DuoCards Auto Import
 // @namespace    ihoru/userscripts
-// @version      1.0.1
+// @version      1.0.2
 // @author       Igor Polyakov (https://github.com/ihoru)
 // @description  Save loaded import cards automatically and reset duplicate progress.
 // @match        https://app.duocards.com/*
@@ -130,7 +130,8 @@
     const form = save?.closest('form');
     const importing = form?.querySelector('[class*="CardForm__Importing"]');
     const match = importing?.textContent.match(/Import\s*(\d+)\s*\/\s*(\d+)/);
-    if (location.pathname.replace(/\/$/, '') !== '/main/card' || !visible(form) || !match) return { active: false };
+    const supportedRoute = ['/main/card', '/library/edit'].includes(location.pathname.replace(/\/$/, ''));
+    if (!supportedRoute || !visible(form) || !match) return { active: false };
     const front = form.querySelector('input[name="front"]')?.value.trim() || '';
     const back = form.querySelector('input[name="back"]')?.value.trim() || '';
     const hint = form.querySelector('textarea[name="hint"]')?.value.trim() || '';
