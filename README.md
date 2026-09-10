@@ -10,6 +10,7 @@ Small browser scripts that automate repetitive tasks. Browse the [script catalog
 
 | Name | Description | Install |
 | --- | --- | --- |
+| [Toggl Auto Favorites](toggl-auto-favorites/) · [Changelog](toggl-auto-favorites/CHANGELOG.md) | Opens Favorites and collapses expanded desktop navigation once per Timer visit. | [Install / update](https://ihoru.github.io/userscripts/toggl-auto-favorites/toggl-auto-favorites.user.js) |
 | [DuoCards Auto Import](duocards-auto-import/) | Saves loaded import cards, resets duplicate progress, and logs completed actions. | [Install / update](https://ihoru.github.io/userscripts/duocards-auto-import/duocards-auto-import.user.js) |
 | [GitLab → TopTracker](gitlab-toptracker/) · [Changelog](gitlab-toptracker/CHANGELOG.md) | Adds a Start TopTracker link only on [git.psa-europe.com](https://git.psa-europe.com/); requires a separate desktop handler. See [handler setup](gitlab-toptracker/README.md#desktop-handler-setup-linux) and [other GitLab hosts](gitlab-toptracker/README.md#using-another-gitlab-instance-or-gitlabcom). | [Install / update](https://ihoru.github.io/userscripts/gitlab-toptracker/gitlab-toptracker.user.js) |
 
