@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Toggl panel fixture</title>
+<style>
+  body { margin: 0; }
+  nav { position: fixed; top: 0; left: 0; height: 100vh; }
+  .fixture-SidePanel { position: relative; z-index: 2; width: 47px; height: 100vh; background: #ddd; }
+  .fixture-HideMobile-SidePanelSection { position: absolute; top: 50%; }
+  .fixture-StyledMainContainer { position: absolute; left: 47px; top: 0; width: 179px; height: 100vh; background: #eee; }
+  .collapsed .fixture-StyledMainContainer { transform: translateX(-181px); }
+  .fixture-Page-EnhancedPage { margin-left: 235px; }
+  button { width: 42px; height: 34px; }
+  .fixture-SidebarRight { position: absolute; top: 130px; right: 5px; width: 318px; min-height: 62px; background: #ddd; }
+  @media (max-width: 800px) { nav { left: -480px; } .fixture-Page-EnhancedPage { margin-left: 10px; } }
+</style>
+<nav>
+  <div class="fixture-StyledMainContainer">Navigation</div>
+  <div class="fixture-SidePanel"><div class="fixture-HideMobile-SidePanelSection"><div class="fixture-SidePanelItem">
+    <button id="nav" aria-label="Fixture navigation"><svg viewBox="0 0 21 12"><path d="M0 0h12v1H0z"/></svg></button>
+  </div></div></div>
+</nav>
+<div class="fixture-Page-EnhancedPage">
+  <div class="fixture-TimerContainer">
+    <button id="unrelated" aria-label="Start/Stop time entry">Timer</button>
+    <button id="favorite" class="fixture-SidebarButton" aria-label="Fixture sidebar">Panel</button>
+  </div>
+  <div id="sidebar-slot"></div>
+</div>
+<output id="events"></output>
+<script>
+  window.events = [];
+  window.hold = {};
+  window.delay = 0;
+  window.openSidebar = () => {
+    document.querySelector('#sidebar-slot').innerHTML = '<div class="fixture-SidebarRight"><details><summary>Favorites<button class="fixture-FavoritesWidget">Edit</button></summary><ol class="fixture-FavoritesWidget"><li>Example favorite</li></ol></details></div>';
+  };
+  function record(name) {
+    events.push(name);
+    document.querySelector('#events').textContent = JSON.stringify(events);
+  }
+  document.querySelector('#nav').onclick = () => {
+    record('nav');
+    if (!hold.nav) setTimeout(() => document.querySelector('nav').classList.toggle('collapsed'), delay);
+  };
+  document.querySelector('#favorite').onclick = () => {
+    record('favorite');
+    if (!hold.favorite) setTimeout(() => {
+      const sidebar = document.querySelector('#sidebar-slot');
+      if (sidebar.children.length) sidebar.replaceChildren(); else openSidebar();
+    }, delay);
+  };
+  document.querySelector('#unrelated').onclick = () => record('unrelated');
+</script>
+</html>
