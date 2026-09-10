@@ -6,7 +6,7 @@
   <meta name="description" content="Small browser scripts by Igor Polyakov. Install with Tampermonkey to automate repetitive tasks.">
   <title>Userscripts · Igor Polyakov</title>
   <style>
-    :root { color-scheme: light; --ink:#173348; --muted:#506779; --blue:#155bc4; --paper:#f3f7fc; --line:#ccdae9; --white:#fff; }
+    :root { color-scheme: light dark; --ink:#173348; --muted:#506779; --blue:#155bc4; --paper:#f3f7fc; --line:#ccdae9; --white:#fff; }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--paper); color:var(--ink); font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
     main,footer,header { max-width:1080px; margin:auto; padding:28px 36px; }
@@ -48,6 +48,11 @@
     li p { margin:0; color:var(--muted); font-size:15px; }
     .note { border-left:3px solid var(--blue); padding-left:18px; margin:30px 0 0; color:var(--muted); font-size:15px; }
     footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; border-top:1px solid var(--line); font-size:14px; color:var(--muted); margin-top:30px; }
+    @media (prefers-color-scheme: dark) {
+      :root { --ink:#e5edf5; --muted:#aebdca; --blue:#83b7ff; --paper:#111a23; --line:#334757; --white:#1b2935; }
+      .install { color:#102033; }
+      .install:hover { background:#a9ccff; }
+    }
     @media(max-width:650px) { main,header,footer { padding:22px; } .hero { padding:30px 0; } .script { grid-template-columns:1fr; padding:24px; gap:14px; } ol { grid-template-columns:1fr; gap:24px; } .action { align-items:flex-start; text-align:left; } }
   </style>
 </head>
