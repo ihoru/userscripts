@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Google Calendar Autoconfirm
 // @namespace    su.iho.google-calendar-autoconfirm
-// @version      1.0.2
+// @version      1.0.3
 // @license      MIT
 // @author       Igor Polyakov (https://github.com/ihoru)
 // @description  Auto-confirm edits and deletions of this recurring occurrence, except in the full editor. English interface only.
@@ -22,7 +22,8 @@
   window[KEY] = true;
 
   const NAME = 'Google Calendar Autoconfirm';
-  const VERSION = '1.0.2';
+  const VERSION = '1.0.3';
+  const PANEL_STATE_KEY = 'su.iho.google-calendar-autoconfirm.panelCollapsed';
   const STABILITY = 300;
   const DEADLINE = 10000;
   const accountPath = () => location.pathname.match(/^\/calendar\/u\/\d+\//)?.[0];
@@ -70,8 +71,22 @@
     collapse.style.cssText = collapsed ? 'display:block;width:14px;height:14px;padding:0;border:1px solid #202124;border-radius:50%;background:#a8c7fa;font-size:0;cursor:pointer' :
       'float:right;margin-left:8px;width:20px;height:20px;padding:0;cursor:pointer';
   }
-  collapsePanel(false);
-  collapse.addEventListener('click', () => collapsePanel(!content.hidden));
+  let initiallyCollapsed = false;
+  try {
+    initiallyCollapsed = localStorage.getItem(PANEL_STATE_KEY) === 'true';
+  } catch {
+    console.warn(`[${NAME} ${VERSION}] Could not restore panel preference; starting expanded.`);
+  }
+  collapsePanel(initiallyCollapsed);
+  collapse.addEventListener('click', () => {
+    const collapsed = !content.hidden;
+    collapsePanel(collapsed);
+    try {
+      localStorage.setItem(PANEL_STATE_KEY, String(collapsed));
+    } catch {
+      console.warn(`[${NAME} ${VERSION}] Could not save panel preference; it applies only to this page.`);
+    }
+  });
   panel.append(collapse, content);
   document.body.append(panel);
 

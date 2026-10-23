@@ -252,7 +252,7 @@ test('bug report includes versions and the account slot in a sanitized route aft
   await page.evaluate(() => history.pushState({}, '', '/calendar/u/12/r/eventedit/private-id?secret=value#private'));
   await run(page);
   const url = new URL(await page.getByRole('link', { name: 'Report a bug' }).getAttribute('href'));
-  expect(url.searchParams.get('script')).toBe('Google Calendar Autoconfirm 1.0.2');
+  expect(url.searchParams.get('script')).toBe('Google Calendar Autoconfirm 1.0.3');
   expect(url.searchParams.get('page')).toBe('https://calendar.google.com/calendar/u/12/r/eventedit/');
   expect(url.href).not.toMatch(/private-id|secret|value/);
   expect(url.searchParams.get('environment')).toContain('please specify');
@@ -289,6 +289,52 @@ test('collapse to a tiny dot keeps automation running and expands on click', asy
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Collapse panel to dot' })).toHaveAttribute('aria-expanded', 'true');
 });
+
+test('remembers collapsed and expanded states across reloads and account pages', async ({ page }) => {
+  await setup(page);
+  await page.getByRole('button', { name: 'Collapse panel to dot' }).click();
+  await page.reload();
+  await page.addScriptTag({ content: script });
+  const dot = page.getByRole('button', { name: 'Expand Google Calendar Autoconfirm panel' });
+  await expect(dot).toBeVisible();
+  await expect(dot).toHaveAttribute('aria-expanded', 'false');
+  expect((await dot.boundingBox()).width).toBe(14);
+  await page.evaluate(() => showDialog());
+  await run(page);
+  expect(await actions(page)).toEqual(['ok:Woal0c']);
+
+  await page.goto('https://calendar.google.com/calendar/u/12/r/week');
+  await page.addScriptTag({ content: script });
+  await expect(dot).toBeVisible();
+  await dot.click();
+  await page.reload();
+  await page.addScriptTag({ content: script });
+  await expect(page.getByRole('button', { name: 'Collapse panel to dot' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+});
+
+for (const method of ['getItem', 'setItem']) {
+  test(`storage ${method} failure leaves the panel and automation usable`, async ({ page }) => {
+    const errors = [];
+    const warnings = [];
+    page.on('pageerror', error => errors.push(error.message));
+    page.on('console', msg => { if (msg.type() === 'warning') warnings.push(msg.text()); });
+    await page.addInitScript(method => {
+      Storage.prototype[method] = () => { throw new DOMException('Storage unavailable', 'SecurityError'); };
+    }, method);
+    await setup(page);
+    await page.getByRole('button', { name: 'Collapse panel to dot' }).click();
+    const dot = page.getByRole('button', { name: 'Expand Google Calendar Autoconfirm panel' });
+    await expect(dot).toBeVisible();
+    await page.evaluate(() => showDialog());
+    await run(page);
+    expect(await actions(page)).toEqual(['ok:Woal0c']);
+    await dot.click();
+    await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
+    expect(warnings.some(m => m.includes(method === 'getItem' ? 'Could not restore panel preference' : 'Could not save panel preference'))).toBe(true);
+  });
+}
 
 async function captureLogs(page) {
   await page.evaluate(() => {

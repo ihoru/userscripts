@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3 — 2026-10-23
+
+- Remember the collapsed or expanded panel state across reloads and Calendar account pages in the same browser profile.
+- Keep panel controls and automation working if browser storage is unavailable.
+
 ## 1.0.2 — 2026-10-19
 
 - Recognize Material radio inputs with opacity zero by their visible labels, fixing unrecognized recurring-event dialogs.
