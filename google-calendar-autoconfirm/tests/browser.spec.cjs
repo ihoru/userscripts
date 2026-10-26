@@ -14,6 +14,79 @@ async function setup(page, route = ROOT + 'r/week') {
 async function actions(page) { return page.evaluate(() => window.actions); }
 async function run(page, ms = 1500) { await page.clock.runFor(ms); }
 
+async function showTask(page, selected = 'Woal0c') {
+  await page.evaluate(selected => {
+    const dialog = showDialog(selected);
+    dialog.querySelector('h2').textContent = 'Save repeating task';
+    const labels = dialog.querySelectorAll('label');
+    labels[0].querySelector('.qUJind').textContent = 'This task';
+    labels[2].querySelector('.qUJind').textContent = 'All tasks';
+    labels[1].remove();
+    dialog.querySelectorAll('input[type="radio"]').forEach(r => { r.style.opacity = '0'; });
+  }, selected);
+}
+
+for (const selected of ['Woal0c', 'NkyfNe']) {
+  test(`Save repeating task confirms only This task from ${selected}`, async ({ page }) => {
+    await setup(page);
+    await showTask(page, selected);
+    await run(page);
+    expect(await actions(page)).toEqual(selected === 'Woal0c' ? ['ok:Woal0c'] : ['select:Woal0c', 'ok:Woal0c']);
+    await expect(page.locator('#slot [role="dialog"]')).toHaveCount(0);
+  });
+}
+
+test('task saves remain manual in the full editor and after returning to the calendar', async ({ page }) => {
+  await setup(page, ROOT + 'r/eventedit/invented-id');
+  await showTask(page, 'NkyfNe');
+  await run(page);
+  expect(await actions(page)).toEqual([]);
+  await page.evaluate(() => history.replaceState({}, '', '/calendar/u/0/r/week'));
+  await run(page);
+  expect(await actions(page)).toEqual([]);
+});
+
+test('task saves wait for enabled OK, handle repeated dialogs, and log the correct scope', async ({ page }) => {
+  await setup(page);
+  await captureLogs(page);
+  await showTask(page, 'NkyfNe');
+  await page.locator('#slot button[data-mdc-dialog-action="ok"]').evaluate(el => { el.disabled = true; });
+  await run(page);
+  expect(await actions(page)).toEqual([]);
+  await page.evaluate(() => { document.querySelector('#slot button[data-mdc-dialog-action="ok"]').disabled = false; });
+  await run(page);
+  await showTask(page);
+  await run(page);
+  expect(await actions(page)).toEqual(['select:Woal0c', 'ok:Woal0c', 'ok:Woal0c']);
+  const logs = await page.evaluate(() => dialogLogs);
+  expect(logs.some(args => args[0].includes('Select This task'))).toBe(true);
+  expect(logs.filter(args => args[0].includes('closed after confirming This task'))).toHaveLength(2);
+});
+
+test('a manual task-scope change cancels automatic confirmation', async ({ page }) => {
+  await setup(page);
+  await showTask(page);
+  await run(page, 160);
+  await page.getByRole('radio', { name: 'All tasks', exact: true }).check();
+  await run(page);
+  expect(await actions(page)).toEqual(['select:NkyfNe']);
+});
+
+for (const problem of ['event-labels', 'unobserved-title', 'wrong-action']) {
+  test(`leaves task dialog manual for ${problem}`, async ({ page }) => {
+    await setup(page);
+    await showTask(page);
+    await page.evaluate(problem => {
+      const dialog = document.querySelector('#slot [role="dialog"]');
+      if (problem === 'event-labels') dialog.querySelector('.qUJind').textContent = 'This event';
+      if (problem === 'unobserved-title') dialog.querySelector('h2').textContent = 'Delete repeating task';
+      if (problem === 'wrong-action') dialog.querySelector('[data-mdc-dialog-action="ok"]').textContent = 'Delete';
+    }, problem);
+    await run(page);
+    expect(await actions(page)).toEqual([]);
+  });
+}
+
 for (const selected of ['Woal0c', 'NkyfNe', 'Y8PVec']) {
   test(`selects this occurrence from ${selected}, confirms once and accepts later dialogs`, async ({ page }) => {
     await setup(page);
@@ -252,7 +325,7 @@ test('bug report includes versions and the account slot in a sanitized route aft
   await page.evaluate(() => history.pushState({}, '', '/calendar/u/12/r/eventedit/private-id?secret=value#private'));
   await run(page);
   const url = new URL(await page.getByRole('link', { name: 'Report a bug' }).getAttribute('href'));
-  expect(url.searchParams.get('script')).toBe('Google Calendar Autoconfirm 1.0.3');
+  expect(url.searchParams.get('script')).toBe('Google Calendar Autoconfirm 1.0.4');
   expect(url.searchParams.get('page')).toBe('https://calendar.google.com/calendar/u/12/r/eventedit/');
   expect(url.href).not.toMatch(/private-id|secret|value/);
   expect(url.searchParams.get('environment')).toContain('please specify');

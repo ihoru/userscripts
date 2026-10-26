@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4 — 2026-10-26
+
+- Recognize Save repeating task and confirm only This task instead of All tasks.
+- Preserve the full-editor exception and manual choices for repeating-task saves; log the task scope correctly.
+
 ## 1.0.3 — 2026-10-23
 
 - Remember the collapsed or expanded panel state across reloads and Calendar account pages in the same browser profile.

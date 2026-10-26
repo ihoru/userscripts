@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Google Calendar Autoconfirm
 // @namespace    su.iho.google-calendar-autoconfirm
-// @version      1.0.3
+// @version      1.0.4
 // @license      MIT
 // @author       Igor Polyakov (https://github.com/ihoru)
-// @description  Auto-confirm edits and deletions of this recurring occurrence, except in the full editor. English interface only.
+// @description  Auto-confirm this occurrence of recurring events and task saves, except in the full editor. English interface only.
 // @match        https://calendar.google.com/calendar/u/*/*
 // @grant        none
 // @run-at       document-idle
@@ -22,7 +22,7 @@
   window[KEY] = true;
 
   const NAME = 'Google Calendar Autoconfirm';
-  const VERSION = '1.0.3';
+  const VERSION = '1.0.4';
   const PANEL_STATE_KEY = 'su.iho.google-calendar-autoconfirm.panelCollapsed';
   const STABILITY = 300;
   const DEADLINE = 10000;
@@ -147,30 +147,33 @@
     // Match user-visible semantics, not Google's generated controller IDs or values.
     const heading = dialog.querySelector('h2, [role="heading"]');
     const title = heading && accessibleName(heading, dialog);
-    const kind = title === 'Edit recurring event' ? 'edit' : title === 'Delete recurring event' ? 'delete' : null;
+    const task = title === 'Save repeating task';
+    const kind = task ? 'save-task' : title === 'Edit recurring event' ? 'edit' : title === 'Delete recurring event' ? 'delete' : null;
+    const scopeName = task ? 'This task' : 'This event';
+    const allName = task ? 'All tasks' : 'All events';
     const details = { kind, groupCount: 0, radioNames: [], radios: [], confirmationCount: 0 };
-    if (!kind) return { reason: 'Heading is not an English recurring edit/delete confirmation', details };
+    if (!kind) return { reason: 'Heading is not a supported English recurring event/task confirmation', details };
     const groups = [...dialog.querySelectorAll('[role="radiogroup"]')].filter(visible);
     details.groupCount = groups.length;
     if (groups.length !== 1) return { reason: `Expected one visible radio group; found ${groups.length}`, details };
     const inputs = [...groups[0].querySelectorAll('input[type="radio"]')];
     const radios = inputs.filter(controlVisible);
     const names = radios.map(r => accessibleName(r, dialog));
-    const allowed = ['This event', 'This and following events', 'All events'];
+    const allowed = task ? ['This task', 'All tasks'] : ['This event', 'This and following events', 'All events'];
     // Keep event content, arbitrary dialog text, IDs and URLs out of diagnostics.
     details.radioNames = names.map(name => allowed.includes(name) ? name : '[unrecognized]');
     details.radios = inputs.map(r => ({ visible: controlVisible(r), opacity: getComputedStyle(r).opacity, disabled: r.disabled }));
-    const radio = radios[names.indexOf('This event')];
+    const radio = radios[names.indexOf(scopeName)];
     const buttons = [...dialog.querySelectorAll('button, [role="button"]')]
       .filter(b => visible(b) && (accessibleName(b, dialog) === 'OK' || kind === 'delete' && accessibleName(b, dialog) === 'Delete'));
     details.confirmationCount = buttons.length;
-    if (!radio) return { reason: 'Missing visible radio named This event', details };
-    if (radios.length < 2 || radios.length > 3 || new Set(names).size !== names.length ||
-        !names.includes('All events') || names.some(name => !allowed.includes(name))) {
+    if (!radio) return { reason: `Missing visible radio named ${scopeName}`, details };
+    if (radios.length < 2 || radios.length > allowed.length || new Set(names).size !== names.length ||
+        !names.includes(allName) || names.some(name => !allowed.includes(name))) {
       return { reason: 'Recurring scope options are incomplete, ambiguous or not English', details };
     }
     if (buttons.length !== 1) return { reason: `Expected one visible confirmation button; found ${buttons.length}`, details };
-    return { radio, button: buttons[0], kind, details };
+    return { radio, button: buttons[0], scopeName, kind, details };
   }
 
   function trackDialog(dialog) {
@@ -250,7 +253,7 @@
     if (paused) { dialogs.forEach(d => decision(d, 'paused', 'Automation is paused')); return; }
     if (active && !visible(active.dialog)) {
       if (active.phase === 'confirm') {
-        decision(active.dialog, 'closed', 'Dialog closed after confirming This event; server save not verified');
+        decision(active.dialog, 'closed', `Dialog closed after confirming ${active.scopeName}; server save not verified`);
       } else {
         decision(active.dialog, 'closed', 'Dialog disappeared before confirmation');
       }
@@ -262,7 +265,7 @@
       setStatus('Full editor: choose manually');
       return;
     }
-    if (!dialogs.length) { setStatus('Waiting for a recurring edit'); return; }
+    if (!dialogs.length) { setStatus('Waiting for a recurring event or task'); return; }
     if (dialogs.length !== 1) {
       dialogs.forEach(d => decision(d, 'manual', 'Multiple visible dialogs'));
       if (active) stop('Paused: another dialog appeared');
@@ -278,7 +281,7 @@
       setStatus('Unrecognized dialog: choose manually');
       return;
     }
-    if (!active) active = { dialog, id: trackDialog(dialog).id, since: performance.now(), phase: 'select', stable: null };
+    if (!active) active = { dialog, scopeName: controls.scopeName, id: trackDialog(dialog).id, since: performance.now(), phase: 'select', stable: null };
     if (performance.now() - active.since > DEADLINE) { stop('Paused: dialog did not finish within 10 seconds'); return; }
     schedule();
     if (active.phase === 'confirm') { decision(dialog, 'waiting', 'Confirmation clicked; waiting for dialog to close'); setStatus('Waiting for dialog to close'); return; }
@@ -296,7 +299,7 @@
     if (!active.stable || active.stable.signature !== signature || active.stable.radio !== radio || active.stable.button !== button) {
       active.stable = { signature, radio, button, since: performance.now() };
     }
-    setStatus('Confirming This event');
+    setStatus(`Confirming ${controls.scopeName}`);
     if (performance.now() - active.stable.since < STABILITY) { decision(dialog, 'waiting', 'Recognized dialog; waiting for stable controls', controls.details); return; }
     // Recheck the route immediately before either action.
     if (!supported() || editor() || editorFlow) return;
@@ -304,7 +307,7 @@
       if (active.selected) { stop('Paused: selected occurrence did not stay selected'); return; }
       active.selected = true;
       active.stable = null;
-      decision(dialog, 'select', 'Select This event', controls.details);
+      decision(dialog, 'select', `Select ${controls.scopeName}`, controls.details);
       click(radio);
       return;
     }
