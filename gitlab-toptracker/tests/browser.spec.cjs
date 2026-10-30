@@ -11,7 +11,7 @@ const title = 'Проверить поиск & фильтры #1';
 
 async function setup(page, path, html = titleMarkup) {
   await page.route(origin + '/**', route => route.fulfill({
-    contentType: 'text/html', body: '<!doctype html><html><body>' + html + '</body></html>',
+    contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><body>' + html + '</body></html>',
   }));
   await page.goto(origin + path);
   // Respect the userscript's match metadata: injecting unconditionally would
