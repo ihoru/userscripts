@@ -18,17 +18,24 @@
 (() => {
   'use strict';
   const id = 'gitlab-toptracker-start';
+  const initialized = Symbol.for('local.ihoru.gitlab-toptracker');
+  if (window[initialized]) return;
+  window[initialized] = true;
+
   function update() {
-    const match = location.pathname.match(/^\/(.+)\/-\/(issues|work_items)\/([1-9]\d*)\/?$/);
+    const match = location.pathname.match(/^\/(?!groups\/)([^/]+(?:\/[^/]+)+)\/-\/(issues|work_items)\/([1-9]\d*)\/?$/);
     let link = document.getElementById(id);
     if (!match) {
       link?.remove();
       return;
     }
-    const visibleHeading = selector => Array.from(document.querySelectorAll(selector))
-      .find(element => element.getClientRects().length > 0);
-    const heading = visibleHeading('h1[data-testid="work-item-title"]')
-      || (match[2] === 'issues' ? visibleHeading('h1') : null);
+    const visibleHeadings = selector => Array.from(document.querySelectorAll(selector))
+      .filter(element => element.getClientRects().length > 0
+        && getComputedStyle(element).visibility === 'visible');
+    let headings = visibleHeadings('h1[data-testid="work-item-title"]');
+    if (!headings.length && match[2] === 'issues') headings = visibleHeadings('h1');
+    // Multiple visible details can represent different items. Do not guess.
+    const heading = headings.length === 1 ? headings[0] : null;
     if (!heading || !heading.textContent.trim()) {
       link?.remove();
       return;

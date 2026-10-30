@@ -139,11 +139,11 @@ Keep only one enabled copy of the script. Official help: [installation](https://
 
 ## Usage and behavior
 
-- Open a project issue or work item (`/-/issues/<number>` or `/-/work_items/<number>`) and click **▶ Start TopTracker** below its title. Legacy issue pages remain supported.
+- Open a project issue or work item (`/-/issues/<number>` or `/-/work_items/<number>`) and click **▶ Start TopTracker** below its title. Legacy issue pages remain supported. Group work items and drawers opened without a project detail URL are not supported.
 - The link tooltip previews `namespace/project!ISSUE TITLE`, including nested namespaces. Whitespace in the title is normalized.
 - The script passes a canonical `https://<host>/<namespace>/<project>/-/issues/<number>` URL and the normalized title to `toptracker-issue://start` as URL-encoded `issue` and `title` parameters. Work-item URLs are converted to `/issues/` for the existing desktop handler; query parameters, fragments, and trailing slashes are omitted.
 - The script loads on the PSA GitLab origin so client-side navigation from project and list pages works without a reload. The button appears only on supported numeric item routes. DOM changes refresh it; URL-only navigation is detected within one second. Missing, hidden, or empty titles and unsupported routes remove it.
-- New work-item pages use the visible `h1[data-testid="work-item-title"]` heading. Legacy `/issues/` pages also allow a visible `h1`. If GitLab replaces the title, the button follows it.
+- New work-item pages use the visible `h1[data-testid="work-item-title"]` heading. Legacy `/issues/` pages also allow a visible `h1`. Multiple visible candidate titles suppress the button rather than guessing which item to track. If GitLab replaces the title, the button follows it.
 - No activity is requested until you click. The script runs outside frames, requires no privileged userscript permissions, and makes no GitLab or TopTracker API calls.
 
 If the browser cannot open the link, check that the desktop protocol handler is installed and registered. For activity errors, check the desktop integration and TopTracker. When reporting a userscript bug, include its version and omit private issue titles and URLs.

@@ -94,6 +94,47 @@ test('initial list-page injection survives client-side navigation and URL-only c
   await expectLink(page, 'example/project', 8);
 });
 
+test('group work items never generate a project issue URL', async ({ page }) => {
+  await setup(page, '/groups/example/team/-/work_items/42');
+  await expect(page.locator(button)).toHaveCount(0);
+});
+
+test('visibility-hidden titles are ignored and recover when shown', async ({ page }) => {
+  await setup(page, '/example/project/-/work_items/42', '<div style="visibility: hidden">' + titleMarkup + '</div>');
+  await expect(page.locator(button)).toHaveCount(0);
+  await page.locator('div').evaluate(element => { element.style.visibility = 'visible'; });
+  await expectLink(page, 'example/project', 42);
+});
+
+for (const route of ['issues', 'work_items']) {
+  test(`${route}: ambiguous visible titles suppress the link until resolved`, async ({ page }) => {
+    await setup(page, `/example/project/-/${route}/42`, titleMarkup + titleMarkup);
+    await expect(page.locator(button)).toHaveCount(0);
+    await page.locator(titleSelector).last().evaluate(heading => heading.remove());
+    await expectLink(page, 'example/project', 42);
+  });
+}
+
+test('only an explicit click requests the desktop protocol and reinjection keeps one link', async ({ page }) => {
+  await setup(page, '/example/project/-/work_items/42');
+  await expectLink(page, 'example/project', 42);
+  await page.addScriptTag({ content: script });
+  await page.evaluate(() => {
+    window.openedLinks = [];
+    document.addEventListener('click', event => {
+      const link = event.target.closest('a');
+      if (!link) return;
+      event.preventDefault();
+      openedLinks.push(link.href);
+    });
+  });
+  await expect(page.locator(button)).toHaveCount(1);
+  expect(await page.evaluate(() => openedLinks)).toEqual([]);
+  const href = await page.locator(button).getAttribute('href');
+  await page.locator(button).click();
+  expect(await page.evaluate(() => openedLinks)).toEqual([href]);
+});
+
 for (const path of ['/work_items/new', '/work_items/0', '/work_items/42/edit', '/issues/new', '/merge_requests/42']) {
   test(`does not activate on unsupported route ${path}`, async ({ page }) => {
     await setup(page, '/example/project/-' + path);
