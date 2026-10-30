@@ -4,7 +4,7 @@ Author: [Igor Polyakov](https://github.com/ihoru). Licensed under [MIT](../LICEN
 
 [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/ihoru/userscripts/issues/new?template=bug_report.yml)
 
-Adds **▶ Start TopTracker** below the issue title. **As distributed, this script works only on [PSA GitLab](https://git.psa-europe.com/). It does not run on GitLab.com or other GitLab instances.** See [using another GitLab instance](#using-another-gitlab-instance-or-gitlabcom) to adapt both the script and desktop handler.
+Adds **▶ Start TopTracker** below the issue or work-item title. **As distributed, this script works only on [PSA GitLab](https://git.psa-europe.com/). It does not run on GitLab.com or other GitLab instances.** See [using another GitLab instance](#using-another-gitlab-instance-or-gitlabcom) to adapt both the script and desktop handler.
 
 Clicking the link asks the desktop integration to start an activity with a description such as `namespace/project!501 Issue title`.
 
@@ -91,16 +91,16 @@ Then install the userscript, reload a supported issue page, stop any existing ac
 In your userscript manager's editor, replace the existing PSA `@match` line with your HTTPS host:
 
 ```javascript
-// @match        https://gitlab.example.com/*/-/issues/*
+// @match        https://gitlab.example.com/*
 ```
 
 For GitLab.com, use:
 
 ```javascript
-// @match        https://gitlab.com/*/-/issues/*
+// @match        https://gitlab.com/*
 ```
 
-Keep multiple `@match` lines only if you want the script on multiple explicit hosts. Save the script and reload the issue page. The script already derives the issue URL from the current page, so standard `/<namespace>/<project>/-/issues/<number>` routes need no other JavaScript changes. A deployment under an extra URL prefix needs corresponding path handling changes in both the script and handler so the prefix is not mistaken for part of the namespace.
+Keep multiple `@match` lines only if you want the script on multiple explicit hosts. Save the script and reload the issue page. The script derives the project and item number from the current page, supporting both `/<namespace>/<project>/-/issues/<number>` and `/<namespace>/<project>/-/work_items/<number>`. It sends an `/issues/<number>` URL to the desktop handler for compatibility with its existing parser. A deployment under an extra URL prefix needs corresponding path handling changes in both the script and handler so the prefix is not mistaken for part of the namespace.
 
 Treat this as a local fork: give it a distinct `@name` and `@namespace`, remove the upstream `@updateURL`, and replace `@downloadURL` with `// @downloadURL  none` to disable automatic updates. Disable the original copy if their match patterns overlap. Otherwise an upstream update can replace your host customization. Merge future upstream changes into the fork manually. See Tampermonkey's [match metadata](https://www.tampermonkey.net/documentation.php#meta:match) and [download/update metadata](https://www.tampermonkey.net/documentation.php#meta:downloadURL).
 
@@ -139,10 +139,11 @@ Keep only one enabled copy of the script. Official help: [installation](https://
 
 ## Usage and behavior
 
-- Open an issue and click **▶ Start TopTracker** below its title.
+- Open a project issue or work item (`/-/issues/<number>` or `/-/work_items/<number>`) and click **▶ Start TopTracker** below its title. Legacy issue pages remain supported. Group work items and drawers opened without a project detail URL are not supported.
 - The link tooltip previews `namespace/project!ISSUE TITLE`, including nested namespaces. Whitespace in the title is normalized.
-- The script passes the issue origin and pathname, without query parameters or fragments, and the normalized title to `toptracker-issue://start` as URL-encoded `issue` and `title` parameters.
-- Page changes refresh the link. Missing or empty headings and unsupported issue paths remove it.
+- The script passes a canonical `https://<host>/<namespace>/<project>/-/issues/<number>` URL and the normalized title to `toptracker-issue://start` as URL-encoded `issue` and `title` parameters. Work-item URLs are converted to `/issues/` for the existing desktop handler; query parameters, fragments, and trailing slashes are omitted.
+- The script loads on the PSA GitLab origin so client-side navigation from project and list pages works without a reload. The button appears only on supported numeric item routes. DOM changes refresh it; URL-only navigation is detected within one second. Missing, hidden, or empty titles and unsupported routes remove it.
+- New work-item pages use the visible `h1[data-testid="work-item-title"]` heading. Legacy `/issues/` pages also allow a visible `h1`. Multiple visible candidate titles suppress the button rather than guessing which item to track. If GitLab replaces the title, the button follows it.
 - No activity is requested until you click. The script runs outside frames, requires no privileged userscript permissions, and makes no GitLab or TopTracker API calls.
 
 If the browser cannot open the link, check that the desktop protocol handler is installed and registered. For activity errors, check the desktop integration and TopTracker. When reporting a userscript bug, include its version and omit private issue titles and URLs.
@@ -155,10 +156,13 @@ From **0.1.1**, `@updateURL` and `@downloadURL` point to the stable public GitHu
 
 ## Development and verification
 
-The executable body preserves the supplied script. From the repository root, check its syntax with:
+From the repository root, check syntax and run the Chromium regression fixtures with:
 
 ```sh
 node --check gitlab-toptracker/gitlab-toptracker.user.js
+npm ci --ignore-scripts
+npx playwright install chromium
+npm run test:browser -- gitlab-toptracker/tests/browser.spec.cjs
 ```
 
-See the root [checks and releases instructions](../README.md#checks-and-releases) for metadata, catalog, and repository regression checks. These checks do not activate a desktop timer or verify the external handler.
+See the root [checks and releases instructions](../README.md#checks-and-releases) for metadata, catalog, and repository regression checks. The browser tests cover new and legacy routes, encoded protocol links, delayed/hidden titles, title replacement, and client-side navigation. They use invented local fixtures and do not activate a desktop timer or verify the external handler.
