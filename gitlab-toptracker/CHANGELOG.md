@@ -1,5 +1,10 @@
 # GitLab → TopTracker changelog
 
+## 0.1.3 — 2026-11-10
+
+- Add Start TopTracker below the title in the right-hand panel on project Work items lists.
+- Use the open item's full-page link for its project and number, and refresh the button when the panel changes.
+
 ## 0.1.2 — 2026-10-30
 
 - Support GitLab's new `/work_items/<number>` pages and `work-item-title` heading while retaining legacy issue-page support.

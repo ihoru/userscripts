@@ -8,6 +8,20 @@ const button = '#gitlab-toptracker-start';
 const titleSelector = 'h1[data-testid="work-item-title"]';
 const titleMarkup = '<h1 data-testid="work-item-title" class="gl-heading-1 !gl-m-0 gl-w-full gl-wrap-anywhere"><span>  Проверить поиск &amp; фильтры #1  </span></h1>';
 const title = 'Проверить поиск & фильтры #1';
+const panelSelector = '[data-testid="work-item-detail-panel"]';
+const panelTitleSelector = 'h2[data-testid="work-item-title"]';
+
+function panelMarkup(href) {
+  return `<div data-testid="work-item-detail-panel">
+    <div class="panel-header">
+      <div class="panel-header-controls"><a href="${href}">Open in full page</a></div>
+    </div>
+    <div data-testid="work-item-detail">
+      <h2 data-testid="work-item-title"><span>  Проверить поиск &amp; фильтры #1  </span></h2>
+      <a href="/example/project/-/work_items/99">Related work item</a>
+    </div>
+  </div>`;
+}
 
 async function setup(page, path, html = titleMarkup) {
   await page.route(origin + '/**', route => route.fulfill({
@@ -45,6 +59,42 @@ test('new work-item page uses its visible title and a handler-compatible encoded
 test('legacy issue pages retain their title and protocol behavior', async ({ page }) => {
   await setup(page, '/example/project/-/issues/7/?ignored=1#note_9', '<h1> Legacy\n  issue title </h1>');
   await expectLink(page, 'example/project', 7, 'Legacy issue title');
+});
+
+test('an open work-item panel uses its own title and full-page link', async ({ page }) => {
+  await setup(page, '/example/project/-/work_items?state=opened&show=opaque',
+    '<h1>Work items</h1><h2 data-testid="work-item-title">Unrelated title</h2>'
+      + panelMarkup('/example/team/project/-/work_items/42?ignored=1#note_9'));
+  await expectLink(page, 'example/team/project', 42);
+  await expect(page.locator(`${panelSelector} ${panelTitleSelector} + ${button}`)).toHaveCount(1);
+});
+
+test('opening, switching and closing a work-item panel updates the timer link', async ({ page }) => {
+  await setup(page, '/example/project/-/work_items', '<h1>Work items</h1>');
+  await expect(page.locator(button)).toHaveCount(0);
+  await page.evaluate(markup => document.body.insertAdjacentHTML('beforeend', markup),
+    panelMarkup('/example/project/-/work_items/42'));
+  await expectLink(page, 'example/project', 42);
+
+  // The same panel and title can be reused for an item with the same name.
+  await page.locator('.panel-header-controls a').evaluate(link => {
+    link.href = '/example/project/-/work_items/43';
+  });
+  await expectLink(page, 'example/project', 43);
+  await page.locator(panelTitleSelector).evaluate(heading => { heading.textContent = 'Next item'; });
+  await expectLink(page, 'example/project', 43, 'Next item');
+
+  await page.locator(panelSelector).evaluate(panel => { panel.hidden = true; });
+  await expect(page.locator(button)).toHaveCount(0);
+});
+
+test('a panel with an external full-page link cannot start the timer', async ({ page }) => {
+  await setup(page, '/example/project/-/work_items', panelMarkup('/example/project/-/work_items/42'));
+  await expectLink(page, 'example/project', 42);
+  await page.locator('.panel-header-controls a').evaluate(link => {
+    link.href = 'https://example.com/example/project/-/work_items/43';
+  });
+  await expect(page.locator(button)).toHaveCount(0);
 });
 
 test('waits for a real work-item title and follows edits, empty titles, and visibility', async ({ page }) => {
