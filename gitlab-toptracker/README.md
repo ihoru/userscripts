@@ -4,7 +4,7 @@ Author: [Igor Polyakov](https://github.com/ihoru). Licensed under [MIT](../LICEN
 
 [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/ihoru/userscripts/issues/new?template=bug_report.yml)
 
-Adds **▶ Start TopTracker** below the issue or work-item title. **As distributed, this script works only on [PSA GitLab](https://git.psa-europe.com/). It does not run on GitLab.com or other GitLab instances.** See [using another GitLab instance](#using-another-gitlab-instance-or-gitlabcom) to adapt both the script and desktop handler.
+Adds **▶ Start TopTracker** below the title on an issue or work-item page, and in the right-hand panel on the project Work items list. **As distributed, this script works only on [PSA GitLab](https://git.psa-europe.com/). It does not run on GitLab.com or other GitLab instances.** See [using another GitLab instance](#using-another-gitlab-instance-or-gitlabcom) to adapt both the script and desktop handler.
 
 Clicking the link asks the desktop integration to start an activity with a description such as `namespace/project!501 Issue title`.
 
@@ -139,11 +139,11 @@ Keep only one enabled copy of the script. Official help: [installation](https://
 
 ## Usage and behavior
 
-- Open a project issue or work item (`/-/issues/<number>` or `/-/work_items/<number>`) and click **▶ Start TopTracker** below its title. Legacy issue pages remain supported. Group work items and drawers opened without a project detail URL are not supported.
+- Open a project issue or work item on its own page or in the right-hand panel of `/-/work_items`, then click **▶ Start TopTracker** below its title. The panel uses its full-page link to identify the open item. Group work items are outside the supported project routes.
 - The link tooltip previews `namespace/project!ISSUE TITLE`, including nested namespaces. Whitespace in the title is normalized.
 - The script passes a canonical `https://<host>/<namespace>/<project>/-/issues/<number>` URL and the normalized title to `toptracker-issue://start` as URL-encoded `issue` and `title` parameters. Work-item URLs are converted to `/issues/` for the existing desktop handler; query parameters, fragments, and trailing slashes are omitted.
-- The script loads on the PSA GitLab origin so client-side navigation from project and list pages works without a reload. The button appears only on supported numeric item routes. DOM changes refresh it; URL-only navigation is detected within one second. Missing, hidden, or empty titles and unsupported routes remove it.
-- New work-item pages use the visible `h1[data-testid="work-item-title"]` heading. Legacy `/issues/` pages also allow a visible `h1`. Multiple visible candidate titles suppress the button rather than guessing which item to track. If GitLab replaces the title, the button follows it.
+- The script loads on the PSA GitLab origin so client-side navigation from project and list pages works without a reload. DOM changes refresh the button when the item or title changes. URL-only navigation is detected within one second. Closing the panel or leaving a supported view removes the button.
+- The script uses the visible `work-item-title` heading (`h1` on a work-item page and `h2` in the panel). Legacy `/issues/` pages also allow a visible `h1`. The button requires one visible, nonempty candidate title.
 - No activity is requested until you click. The script runs outside frames, requires no privileged userscript permissions, and makes no GitLab or TopTracker API calls.
 
 If the browser cannot open the link, check that the desktop protocol handler is installed and registered. For activity errors, check the desktop integration and TopTracker. When reporting a userscript bug, include its version and omit private issue titles and URLs.
@@ -165,4 +165,4 @@ npx playwright install chromium
 npm run test:browser -- gitlab-toptracker/tests/browser.spec.cjs
 ```
 
-See the root [checks and releases instructions](../README.md#checks-and-releases) for metadata, catalog, and repository regression checks. The browser tests cover new and legacy routes, encoded protocol links, delayed/hidden titles, title replacement, and client-side navigation. They use invented local fixtures and do not activate a desktop timer or verify the external handler.
+See the root [checks and releases instructions](../README.md#checks-and-releases) for metadata, catalog, and repository regression checks. The browser tests cover full pages and panel navigation, encoded protocol links, delayed/hidden titles, title replacement, and client-side navigation. They use invented local fixtures and do not activate a desktop timer or verify the external handler.
