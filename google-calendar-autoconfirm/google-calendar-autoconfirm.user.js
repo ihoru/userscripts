@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Google Calendar Autoconfirm
 // @namespace    su.iho.google-calendar-autoconfirm
-// @version      1.0.4
+// @version      1.0.5
 // @license      MIT
 // @author       Igor Polyakov (https://github.com/ihoru)
 // @description  Auto-confirm this occurrence of recurring events and task saves, except in the full editor. English interface only.
@@ -22,7 +22,7 @@
   window[KEY] = true;
 
   const NAME = 'Google Calendar Autoconfirm';
-  const VERSION = '1.0.4';
+  const VERSION = '1.0.5';
   const PANEL_STATE_KEY = 'su.iho.google-calendar-autoconfirm.panelCollapsed';
   const STABILITY = 300;
   const DEADLINE = 10000;
@@ -160,6 +160,7 @@
     const radios = inputs.filter(controlVisible);
     const names = radios.map(r => accessibleName(r, dialog));
     const allowed = task ? ['This task', 'All tasks'] : ['This event', 'This and following events', 'All events'];
+    const hasOtherScope = names.includes(allName) || (kind === 'edit' && names.includes('This and following events'));
     // Keep event content, arbitrary dialog text, IDs and URLs out of diagnostics.
     details.radioNames = names.map(name => allowed.includes(name) ? name : '[unrecognized]');
     details.radios = inputs.map(r => ({ visible: controlVisible(r), opacity: getComputedStyle(r).opacity, disabled: r.disabled }));
@@ -169,7 +170,7 @@
     details.confirmationCount = buttons.length;
     if (!radio) return { reason: `Missing visible radio named ${scopeName}`, details };
     if (radios.length < 2 || radios.length > allowed.length || new Set(names).size !== names.length ||
-        !names.includes(allName) || names.some(name => !allowed.includes(name))) {
+        !hasOtherScope || names.some(name => !allowed.includes(name))) {
       return { reason: 'Recurring scope options are incomplete, ambiguous or not English', details };
     }
     if (buttons.length !== 1) return { reason: `Expected one visible confirmation button; found ${buttons.length}`, details };

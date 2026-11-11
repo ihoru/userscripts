@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5 — 2026-11-11
+
+- Confirm only This event when a recurring edit offers This event and This and following events.
+
 ## 1.0.4 — 2026-10-26
 
 - Recognize Save repeating task and confirm only This task instead of All tasks.
