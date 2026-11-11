@@ -182,6 +182,21 @@ test('recognizes transparent Material radio inputs using their visible labels', 
   expect(await actions(page)).toEqual(['select:Woal0c', 'ok:Woal0c']);
 });
 
+for (const selected of ['Woal0c', 'Y8PVec']) {
+  test(`confirms the two-option recurring edit from ${selected}`, async ({ page }) => {
+    await setup(page);
+    await page.evaluate(selected => {
+      const dialog = showDialog(selected);
+      // Calendar omits All events on some recurring edits.
+      dialog.querySelectorAll('label')[2].remove();
+      dialog.querySelectorAll('input[type="radio"]').forEach(radio => { radio.style.opacity = '0'; });
+    }, selected);
+    await run(page);
+    expect(await actions(page)).toEqual(selected === 'Woal0c' ? ['ok:Woal0c'] : ['select:Woal0c', 'ok:Woal0c']);
+    await expect(page.locator('#slot [role="dialog"]')).toHaveCount(0);
+  });
+}
+
 test('preserves editor provenance after Save returns to the calendar, then permits new grid edits', async ({ page }) => {
   await setup(page, ROOT + 'r/eventedit/invented-id');
   await page.evaluate(() => {
@@ -325,7 +340,7 @@ test('bug report includes versions and the account slot in a sanitized route aft
   await page.evaluate(() => history.pushState({}, '', '/calendar/u/12/r/eventedit/private-id?secret=value#private'));
   await run(page);
   const url = new URL(await page.getByRole('link', { name: 'Report a bug' }).getAttribute('href'));
-  expect(url.searchParams.get('script')).toBe('Google Calendar Autoconfirm 1.0.4');
+  expect(url.searchParams.get('script')).toBe('Google Calendar Autoconfirm 1.0.5');
   expect(url.searchParams.get('page')).toBe('https://calendar.google.com/calendar/u/12/r/eventedit/');
   expect(url.href).not.toMatch(/private-id|secret|value/);
   expect(url.searchParams.get('environment')).toContain('please specify');
